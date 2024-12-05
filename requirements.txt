@@ -1,0 +1,8 @@
+streamlit
+chromadb
+dspy
+mlflow
+uuid
+azure-identity
+python-dotenv
+ollama
