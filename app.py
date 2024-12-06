@@ -77,9 +77,10 @@ def launch_mlflow():
 # Create the submit button
 if st.button("Analyze"):
     if transcribed_text:
-        # st.subheader("🤔 Agent's Current Step")
-        # Create thought container here
+        # Clear previous results by emptying the containers
         st.session_state.thought_container = st.empty()
+        st.session_state.results_container = st.empty()
+        st.session_state.references_container = st.empty()
         
         # Start experiment
         mlflow.dspy.autolog()
@@ -98,23 +99,26 @@ if st.button("Analyze"):
 if st.session_state.analysis_complete and st.session_state.prediction_results:
     prediction = st.session_state.prediction_results
     
-    st.subheader("Assistant Results")
-    st.write(prediction.relevant_information)
+    # Display results in the designated containers
+    with st.session_state.results_container.container():
+        st.subheader("Assistant Results")
+        st.write(prediction.relevant_information)
     
     # Add citations section
-    st.subheader("📚 References:")
-    st.write(prediction.citations)
-    
-    st.markdown("---")
-    
-    # Add expandable sections for trajectory and reasoning
-    with st.expander("💭 View Prediction Reasoning", expanded=False):
-        st.write(prediction.reasoning)
+    with st.session_state.references_container.container():
+        st.subheader("📚 References:")
+        st.write(prediction.citations)
+        
+        st.markdown("---")
+        
+        # Add expandable sections for trajectory and reasoning
+        with st.expander("💭 View Prediction Reasoning", expanded=False):
+            st.write(prediction.reasoning)
 
-    with st.expander("🔍 View Prediction Trajectory", expanded=False):
-        st.write(prediction.trajectory)
-    
-    st.markdown("---")
+        with st.expander("🔍 View Prediction Trajectory", expanded=False):
+            st.write(prediction.trajectory)
+        
+        st.markdown("---")
     
     # MLflow button with callback
     if st.button("View MLflow Experiment Results", on_click=launch_mlflow):
