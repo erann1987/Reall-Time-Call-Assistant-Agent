@@ -5,7 +5,9 @@ from dspy.retrieve.chromadb_rm import ChromadbRM
 import dspy
 from dotenv import load_dotenv
 import os
-
+import mlflow
+from dspy.utils.callback import BaseCallback
+import json
 # Load environment variables
 load_dotenv()
 
@@ -43,7 +45,8 @@ except:
     collection = chroma_client.create_collection(collection_name, embedding_function=ef)
     collection.add(
         documents=[d['details'] for d in documents],
-        ids=[str(uuid.uuid4()) for _ in documents]
+        ids=[str(uuid.uuid4()) for _ in documents],
+        metadatas=[{'date': d['date']} for d in documents]
     )
 
 
@@ -65,7 +68,7 @@ def retrieve_notes(query: str) -> str:
         str: Relevant notes from the previous call with distance values.
     """
     search_results = retriever(query, k=3)
-    return "\n\n".join([f"Note {i+1}: {d['long_text']}\nDistance: {d['score']}" for i, d in enumerate(search_results)])
+    return "\n\n".join([f"- Date: {d['metadatas']['date']}\nDetails: {d['long_text']}\nDistance: {d['score']}" for i, d in enumerate(search_results)])
 
 def summarize_notes(relevant_notes: str) -> str:
     """
@@ -90,35 +93,86 @@ class NotesSummary(dspy.Signature):
 
 class Assistant(dspy.Signature):
     """
-    Based on recent utterances from a call between a client advisor and a client, think about what information might be needed from previous calls.
-    If no information is needed, provide the following output: 'waiting for more information' and finish.
-    If relevant notes were retrieved, summarize notes with low distance values, ignore notes with high distance values.
+    You are a ReACT (Reasoning and Action) agent designed to assist wealth management advisors during client calls by surfacing relevant notes from previous interactions. Your primary goal is to enhance the advisor's efficiency and provide timely, accurate information. Here are your instructions:
+
+    Real-Time Transcription Input:
+    You will receive real-time transcribed text from the client-advisor call. This transcription will serve as the input for your reasoning and actions.
+  
+    Intent Recognition:
+    Analyze the transcribed text to detect the client's intent and identify key topics being discussed.
+
+    Note Retrieval:
+    When a relevant intent is detected, generate a query vector based on the current context.
+    Use the query vector to search the vector database for notes from previous interactions that match the current context.
+    If you think more information is needed, wait for more transcribed text to arrive before taking action.
+    
+    Display Notes:
+    Dynamically display the retrieved notes to the advisor in real-time, ensuring they are clear and organized.
+    Highlight the most relevant parts of the notes to help the advisor quickly grasp important information.
+    Output language: English
+
+    Citations:
+    Include citations for the information you provide, indicating the sources of the retrieved notes and any other relevant data.
     """
-    speaker: str = dspy.InputField(desc="The speaker id of the utterance")
-    utterance: str = dspy.InputField(desc="Recent utterances from the call")
-    summary: str = dspy.OutputField(desc="Relevant notes summary from the summarize_notes tool")
+    # speaker: str = dspy.InputField(desc="The speaker id of the utterance")
+    transcribed_text: str = dspy.InputField(desc="Recent transcribed text from the call")
+    citations: str = dspy.OutputField(desc="The original notes from the database")
+    relevant_information: str = dspy.OutputField(desc="Relevant information from previous call notes")
 
 
 class AssistantAgent(dspy.Module):
     def __init__(self):
         self.agent = dspy.ReAct(
             signature=Assistant,
-            tools=[retrieve_notes, summarize_notes]
+            tools=[retrieve_notes]
         )
-    def forward(self, speaker: str, utterance: str) -> str:
-        return self.agent(speaker=speaker, utterance=utterance)
+    def forward(self, transcribed_text: str) -> str:
+        return self.agent(transcribed_text=transcribed_text)
 
 
+# Custom callback for displaying thoughts and actions
+# class AgentLoggingCallback(BaseCallback):
+#     def __init__(self):
+#         super().__init__()
+#         pass
+    
+#     def on_module_start(self, call_id, instance, inputs):
+#         # Clear previous display
+#         print("**💭 Thinking:**")
+#         pass
+#     def on_module_end(self, call_id, outputs, exception):
+#         # Update the display with current step
+#         if "next_thought" in outputs:
+#             print(f"**💭 Thinking:** {outputs['next_thought']}")
+        
+#         if "next_tool_name" in outputs:
+#             if outputs["next_tool_name"].lower() == "finish":
+#                 print("**✅ Finish**")
+#             else:
+#                 args_str = json.dumps(outputs.get("next_tool_args", {}), indent=2)
+#                 print(f"**🔧 Using Tool:** calling `{outputs['next_tool_name']}` with `{args_str}`")
+
+
+# # Configure LM
+# lm = dspy.LM(
+#     model=f"azure/{os.getenv('AZURE_DEPLOYMENT_MODEL')}",
+#     api_key=os.getenv('AZURE_API_KEY'),
+#     api_base=os.getenv('AZURE_API_BASE'),
+#     api_version=os.getenv('AZURE_API_VERSION'),
+#     cache=False
+# )
+# dspy.configure(lm=lm, callbacks=[AgentLoggingCallback()])
+
+# mlflow.dspy.autolog()
+# mlflow.set_experiment("Agent Assistant Bank Call")
 
 # agent = AssistantAgent()
 
 # utterance1 = "Hallo, ich möchte etwas Geld investieren, aber ich möchte etwas mit geringem Risiko. Können Sie mir mehr über die Möglichkeiten erzählen, die Sie haben, wie z.B. Kautionen oder ähnliches?"
 # utterance2 = "Hallo Herr Jonson, guten Morgen, wie geht es Ihnen?"
 
-# prediction = agent(speaker="2", utterance=utterance1)
+# prediction = agent(transcribed_text=utterance1)
 
-# print(f"Prediction reasoning: {prediction.reasoning}")
-# print(f"Prediction summary: {prediction.summary}")
-# print(f"Prediction trajectory: {prediction.trajectory}")
+# print(prediction)
 
 # print(dspy.inspect_history(n=10))

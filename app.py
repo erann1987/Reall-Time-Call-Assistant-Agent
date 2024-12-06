@@ -20,10 +20,6 @@ class AgentLoggingCallback(BaseCallback):
         if 'thought_container' not in st.session_state:
             st.session_state.thought_container = st.empty()
     
-    def on_module_start(self, call_id, inputs):
-        # Clear previous display
-        st.session_state.thought_container.empty()
-    
     def on_module_end(self, call_id, outputs, exception):
         # Update the display with current step
         with st.session_state.thought_container.container():
@@ -65,7 +61,7 @@ col1, col2 = st.columns([1, 4])
 with col1:
     speaker_id = st.text_input("Speaker ID:", value="2", help="Enter the speaker ID (e.g., 1 for client, 2 for advisor)")
 with col2:
-    utterance = st.text_area("Enter the call utterance:", height=150)
+    transcribed_text = st.text_area("Recent transcribed text from the call:", height=150)
 
 def launch_mlflow():
     if not st.session_state.mlflow_launched:
@@ -79,8 +75,8 @@ def launch_mlflow():
         st.session_state.mlflow_launched = True
 
 # Create the submit button
-if st.button("Analyze Utterance"):
-    if utterance:
+if st.button("Analyze"):
+    if transcribed_text:
         # st.subheader("🤔 Agent's Current Step")
         # Create thought container here
         st.session_state.thought_container = st.empty()
@@ -90,20 +86,25 @@ if st.button("Analyze Utterance"):
         mlflow.set_experiment("Agent Assistant Bank Call")
 
         # Get prediction
-        prediction = agent(speaker=speaker_id, utterance=utterance)
+        prediction = agent(transcribed_text=transcribed_text)
         
         # Store results in session state
         st.session_state.prediction_results = prediction
         st.session_state.analysis_complete = True
     else:
-        st.warning("Please enter an utterance to analyze.")
+        st.warning("Provide some transcribed text from the call.")
 
 # Display results if available
 if st.session_state.analysis_complete and st.session_state.prediction_results:
     prediction = st.session_state.prediction_results
     
     st.subheader("Assistant Results")
-    st.write(prediction.summary)
+    st.write(prediction.relevant_information)
+    
+    # Add citations section
+    st.subheader("📚 References:")
+    st.write(prediction.citations)
+    
     st.markdown("---")
     
     # Add expandable sections for trajectory and reasoning
@@ -119,5 +120,5 @@ if st.session_state.analysis_complete and st.session_state.prediction_results:
     if st.button("View MLflow Experiment Results", on_click=launch_mlflow):
         st.success("MLflow UI launched! Opening in new tab...")
 else:
-    if not utterance:
-        st.warning("Please enter an utterance to analyze.")
+    if not transcribed_text:
+        st.warning("Provide some transcribed text from the call.")

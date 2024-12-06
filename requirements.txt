@@ -6,3 +6,4 @@ uuid
 azure-identity
 python-dotenv
 ollama
+azure-cognitiveservices-speech
