@@ -40,3 +40,5 @@ bank_call_agent_db/
 
 # Logs
 *.log 
+
+.DS_Store
