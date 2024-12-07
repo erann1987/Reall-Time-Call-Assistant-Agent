@@ -74,7 +74,7 @@ dspy.configure(lm=lm, callbacks=[AgentLoggingCallback()])
 st.title("Call Assistant 📳 🤖")
 
 # Add file uploader for audio
-uploaded_file = st.file_uploader("📂 Upload an audio file", type=['wav'])
+uploaded_file = st.file_uploader("📂 Upload an audio file", type=['wav', 'mp3'])
 
 # Add transcribe button and handle transcription
 if uploaded_file is not None:
@@ -83,7 +83,7 @@ if uploaded_file is not None:
     
     with audio_col:
         # Display audio player
-        st.audio(uploaded_file, format='audio/wav')
+        st.audio(uploaded_file, format=f'audio/{uploaded_file.type.split("/")[1]}')
     
     with button_col:
         # Center the button vertically with some padding
