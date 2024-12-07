@@ -13,6 +13,33 @@ from dspy.utils.callback import BaseCallback
 import json
 load_dotenv()
 
+# At the top of the file, after the imports, initialize session state for live transcription
+if 'live_transcription' not in st.session_state:
+    st.session_state.live_transcription = ""
+if 'final_transcription' not in st.session_state:
+    st.session_state.final_transcription = ""
+
+def transcriber_callback(transcription):
+    # Create a sidebar for live transcription if it doesn't exist
+    if 'live_transcription_container' not in st.session_state:
+        st.session_state.live_transcription_container = st.sidebar.empty()
+    
+    # Handle different transcription types
+    if transcription['type'] == 'interim':
+        # Update the live transcription display with interim results
+        st.session_state.live_transcription = f"Speaker {transcription['speaker_id']}: {transcription['text']}"
+        st.session_state.live_transcription_container.markdown(f"""
+        ### 📝 Live Transcription
+        {st.session_state.final_transcription}
+        *{st.session_state.live_transcription}*
+        """)
+    
+    elif transcription['type'] == 'final':
+        # Concatenate final transcription and update display
+        new_final = f"Speaker {transcription['speaker_id']}: {transcription['text']}\n"
+        st.session_state.final_transcription += new_final
+        st.session_state.live_transcription = ""  # Clear interim transcription
+
 # Custom callback for displaying thoughts and actions
 class AgentLoggingCallback(BaseCallback):
     def __init__(self):
@@ -44,7 +71,40 @@ lm = dspy.LM(
 )
 dspy.configure(lm=lm, callbacks=[AgentLoggingCallback()])
 
-st.title("Bank Call Assistant")
+st.title("Call Assistant 📳 🤖")
+
+# Add file uploader for audio
+uploaded_file = st.file_uploader("📂 Upload an audio file", type=['wav'])
+
+# Add transcribe button and handle transcription
+if uploaded_file is not None:
+    # Create two columns for audio player and transcribe button
+    audio_col, button_col = st.columns([3, 1])
+    
+    with audio_col:
+        # Display audio player
+        st.audio(uploaded_file, format='audio/wav')
+    
+    with button_col:
+        # Center the button vertically with some padding
+        st.write("")  # Add some vertical spacing
+        transcribe_button = st.button("📝🔊 Transcribe")
+    
+    # Save the uploaded file temporarily
+    with open("temp_audio.wav", "wb") as f:
+        f.write(uploaded_file.read())
+    
+    if transcribe_button:
+        with st.spinner("🤖 Transcribing audio..."):
+            from stt import recognize_from_file, transcription_manager
+            transcription_manager.set_consumer_callback(transcriber_callback)
+            recognize_from_file("temp_audio.wav")
+            st.success("✨ Transcription complete!")
+        
+        # Clean up the temporary file
+        if os.path.exists("temp_audio.wav"):
+            os.remove("temp_audio.wav")
+
 
 # Initialize session states
 if 'analysis_complete' not in st.session_state:
@@ -59,9 +119,11 @@ agent = AssistantAgent()
 # Create the input text area
 col1, col2 = st.columns([1, 4])
 with col1:
-    speaker_id = st.text_input("Speaker ID:", value="2", help="Enter the speaker ID (e.g., 1 for client, 2 for advisor)")
+    speaker_id = st.text_input("📢 Speaker ID:", value="2", help="Enter the speaker ID (e.g., 1 for client, 2 for advisor)")
 with col2:
-    transcribed_text = st.text_area("Recent transcribed text from the call:", height=150)
+    transcribed_text = st.text_area("📝 Transcribed text from the call:", 
+                                   value=st.session_state['final_transcription'],
+                                   height=150)
 
 def launch_mlflow():
     if not st.session_state.mlflow_launched:
@@ -75,7 +137,7 @@ def launch_mlflow():
         st.session_state.mlflow_launched = True
 
 # Create the submit button
-if st.button("Analyze"):
+if st.button("🔍 Analyze"):
     if transcribed_text:
         # Clear previous results by emptying the containers
         st.session_state.thought_container = st.empty()
@@ -121,8 +183,8 @@ if st.session_state.analysis_complete and st.session_state.prediction_results:
         st.markdown("---")
     
     # MLflow button with callback
-    if st.button("View MLflow Experiment Results", on_click=launch_mlflow):
-        st.success("MLflow UI launched! Opening in new tab...")
+    if st.button("📊 View MLflow Experiment Results", on_click=launch_mlflow):
+        st.success("🚀 MLflow UI launched! Opening in new tab...")
 else:
     if not transcribed_text:
         st.warning("Provide some transcribed text from the call.")
