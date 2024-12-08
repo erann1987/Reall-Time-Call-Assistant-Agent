@@ -117,7 +117,7 @@ class Assistant(dspy.Signature):
     # speaker: str = dspy.InputField(desc="The speaker id of the utterance")
     transcribed_text: str = dspy.InputField(desc="Recent transcribed text from the call")
     citations: str = dspy.OutputField(desc="The relevant notes that the relevant information is based on. If no relevant information is found, say 'None'")
-    relevant_information: str = dspy.OutputField(desc="Relevant information from previous call notes. If no relevant information is found, say 'No relevant information found'")
+    relevant_information: str = dspy.OutputField(desc="Relevant information from previous call notes. If no relevant information is found, say 'Waiting for more information'")
 
 
 class AssistantAgent(dspy.Module):
