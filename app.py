@@ -50,7 +50,11 @@ lm = dspy.LM(
     api_version=os.getenv('AZURE_API_VERSION'),
     cache=False
 )
+# lm = dspy.LM('ollama_chat/llama3.2:1b', api_base='http://localhost:11434', api_key='')
 dspy.configure(lm=lm, callbacks=[AgentLoggingCallback()])
+
+# Initialize the agent once
+agent = AssistantAgent()
 
 st.title("Call Assistant 📳 🤖")
 
@@ -92,8 +96,6 @@ if 'analysis_complete' not in st.session_state:
 if 'mlflow_launched' not in st.session_state:
     st.session_state.mlflow_launched = False
 
-agent = AssistantAgent()
-
 def transcriber_callback(transcription):
     # Create a sidebar for live transcription if it doesn't exist
     if 'live_transcription_container' not in st.session_state:
@@ -114,7 +116,6 @@ def transcriber_callback(transcription):
         new_final = f"Speaker {transcription['speaker_id']}: {transcription['text']}\n"
         st.session_state.final_transcription += new_final
         st.session_state.live_transcription = ""  # Clear interim transcription
-        print("calling agent")
 
         lm = dspy.LM(
             model=f"azure/{os.getenv('AZURE_DEPLOYMENT_MODEL')}",
@@ -131,6 +132,7 @@ def transcriber_callback(transcription):
         agent = AssistantAgent()
         st.session_state.current_agent_input.append(new_final)
         prediction = agent(transcribed_text=new_final)
+        print("got prediction")
         st.session_state.prediction_results.append(prediction)
         st.session_state.analysis_complete = True
         
@@ -147,7 +149,7 @@ def launch_mlflow():
         st.session_state.mlflow_launched = True
 
 # Create the submit button
-if st.button("🔍 Analyze"):
+if st.button("🤖 Analyze"):
     st.session_state.thought_container = st.empty()
 
     if input_method == "Write or paste text" and transcribed_text:
@@ -161,11 +163,11 @@ if st.button("🔍 Analyze"):
         st.session_state.prediction_results.append(prediction)
         st.session_state.analysis_complete = True
     elif input_method == "Upload audio file" and uploaded_file:
-        with st.spinner("🤖 Transcribing audio..."):
+        with st.spinner("🤖 Analyzing audio..."):
             from stt import recognize_from_file, transcription_manager
             transcription_manager.set_consumer_callback(transcriber_callback)
             recognize_from_file("temp_audio.wav")
-            st.success("✨ Transcription complete!")
+            st.success("✨ Analysis complete!")
         
         # Clean up the temporary file
         if os.path.exists("temp_audio.wav"):
