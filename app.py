@@ -18,6 +18,8 @@ if 'live_transcription' not in st.session_state:
     st.session_state.live_transcription = ""
 if 'final_transcription' not in st.session_state:
     st.session_state.final_transcription = ""
+if 'current_agent_input' not in st.session_state:
+    st.session_state.current_agent_input = []
 
 # Custom callback for displaying thoughts and actions
 class AgentLoggingCallback(BaseCallback):
@@ -127,6 +129,7 @@ def transcriber_callback(transcription):
         mlflow.set_experiment("Agent Assistant Bank Call - From Audio")
         print(f"calling agent with {new_final}")
         agent = AssistantAgent()
+        st.session_state.current_agent_input.append(new_final)
         prediction = agent(transcribed_text=new_final)
         st.session_state.prediction_results.append(prediction)
         st.session_state.analysis_complete = True
@@ -153,6 +156,7 @@ if st.button("🔍 Analyze"):
         mlflow.set_experiment("Agent Assistant Bank Call - From Text")
 
         # Get prediction
+        st.session_state.current_agent_input.append(transcribed_text)
         prediction = agent(transcribed_text=transcribed_text)
         st.session_state.prediction_results.append(prediction)
         st.session_state.analysis_complete = True
@@ -192,14 +196,15 @@ if st.session_state.analysis_complete and st.session_state.prediction_results:
             st.subheader("📚 References")
             st.write(prediction.citations)
             
+            with st.expander("💬 View Agent Input", expanded=False):
+                st.write(st.session_state.current_agent_input[len(st.session_state.prediction_results) - i])
+
             # Add expandable sections for trajectory and reasoning
-            col1, col2 = st.columns(2)
-            with col1:
-                with st.expander("💭 View Reasoning", expanded=False):
-                    st.write(prediction.reasoning)
-            with col2:
-                with st.expander("🔍 View Trajectory", expanded=False):
-                    st.write(prediction.trajectory)
+            with st.expander("💭 View Reasoning", expanded=False):
+                st.write(prediction.reasoning)
+            
+            with st.expander("🔍 View Trajectory", expanded=False):
+                st.write(prediction.trajectory)
             
             st.markdown("---")
 
