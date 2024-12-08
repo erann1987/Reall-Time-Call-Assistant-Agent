@@ -83,12 +83,12 @@ else:  # Write or paste text option
                                        height=150)
 
 # Initialize session states
+if 'prediction_results' not in st.session_state:
+    st.session_state.prediction_results = []
 if 'analysis_complete' not in st.session_state:
     st.session_state.analysis_complete = False
 if 'mlflow_launched' not in st.session_state:
     st.session_state.mlflow_launched = False
-if 'prediction_results' not in st.session_state:
-    st.session_state.prediction_results = None
 
 agent = AssistantAgent()
 
@@ -127,7 +127,8 @@ def transcriber_callback(transcription):
         mlflow.set_experiment("Agent Assistant Bank Call - From Audio")
         print(f"calling agent with {new_final}")
         agent = AssistantAgent()
-        st.session_state.prediction_results = agent(transcribed_text=new_final)
+        prediction = agent(transcribed_text=new_final)
+        st.session_state.prediction_results.append(prediction)
         st.session_state.analysis_complete = True
         
 
@@ -145,8 +146,6 @@ def launch_mlflow():
 # Create the submit button
 if st.button("🔍 Analyze"):
     st.session_state.thought_container = st.empty()
-    st.session_state.results_container = st.empty()
-    st.session_state.references_container = st.empty()
 
     if input_method == "Write or paste text" and transcribed_text:
         # Start experiment
@@ -154,7 +153,8 @@ if st.button("🔍 Analyze"):
         mlflow.set_experiment("Agent Assistant Bank Call - From Text")
 
         # Get prediction
-        st.session_state.prediction_results = agent(transcribed_text=transcribed_text)
+        prediction = agent(transcribed_text=transcribed_text)
+        st.session_state.prediction_results.append(prediction)
         st.session_state.analysis_complete = True
     elif input_method == "Upload audio file" and uploaded_file:
         with st.spinner("🤖 Transcribing audio..."):
@@ -173,29 +173,36 @@ if st.button("🔍 Analyze"):
 
 # Display results if available
 if st.session_state.analysis_complete and st.session_state.prediction_results:
-    prediction = st.session_state.prediction_results
+    # Clear the thought container after agent is done
+    if 'thought_container' in st.session_state:
+        st.session_state.thought_container.empty()
     
-    # Display results in the designated containers
-    with st.session_state.results_container.container():
-        st.subheader("Assistant Results")
-        st.write(prediction.relevant_information)
+    st.markdown("# Analysis Results")
     
-    # Add citations section
-    with st.session_state.references_container.container():
-        st.subheader("📚 References:")
-        st.write(prediction.citations)
-        
-        st.markdown("---")
-        
-        # Add expandable sections for trajectory and reasoning
-        with st.expander("💭 View Prediction Reasoning", expanded=False):
-            st.write(prediction.reasoning)
+    # Display all predictions in reverse chronological order
+    for i, prediction in enumerate(reversed(st.session_state.prediction_results), 1):
+        with st.container():
+            st.markdown(f"## Analysis #{len(st.session_state.prediction_results) - i + 1}")
+            
+            # Display assistant results
+            st.subheader("🤖 Assistant Results")
+            st.write(prediction.relevant_information)
+            
+            # Add citations section
+            st.subheader("📚 References")
+            st.write(prediction.citations)
+            
+            # Add expandable sections for trajectory and reasoning
+            col1, col2 = st.columns(2)
+            with col1:
+                with st.expander("💭 View Reasoning", expanded=False):
+                    st.write(prediction.reasoning)
+            with col2:
+                with st.expander("🔍 View Trajectory", expanded=False):
+                    st.write(prediction.trajectory)
+            
+            st.markdown("---")
 
-        with st.expander("🔍 View Prediction Trajectory", expanded=False):
-            st.write(prediction.trajectory)
-        
-        st.markdown("---")
-    
     # MLflow button with callback
     if st.button("📊 View MLflow Experiment Results", on_click=launch_mlflow):
         st.success("🚀 MLflow UI launched! Opening in new tab...")
