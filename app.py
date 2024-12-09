@@ -13,14 +13,6 @@ from dspy.utils.callback import BaseCallback
 import json
 load_dotenv()
 
-# At the top of the file, after the imports, initialize session state for live transcription
-if 'live_transcription' not in st.session_state:
-    st.session_state.live_transcription = ""
-if 'final_transcription' not in st.session_state:
-    st.session_state.final_transcription = ""
-if 'current_agent_input' not in st.session_state:
-    st.session_state.current_agent_input = []
-
 # Custom callback for displaying thoughts and actions
 class AgentLoggingCallback(BaseCallback):
     def __init__(self):
@@ -42,7 +34,6 @@ class AgentLoggingCallback(BaseCallback):
                     args_str = json.dumps(outputs.get("next_tool_args", {}), indent=2)
                     st.markdown(f"**🔧 Using Tool:** calling `{outputs['next_tool_name']}` with `{args_str}`")
 
-# Configure LM
 lm = dspy.LM(
     model=f"azure/{os.getenv('AZURE_DEPLOYMENT_MODEL')}",
     api_key=os.getenv('AZURE_API_KEY'),
@@ -50,11 +41,18 @@ lm = dspy.LM(
     api_version=os.getenv('AZURE_API_VERSION'),
     cache=False
 )
-# lm = dspy.LM('ollama_chat/llama3.2:1b', api_base='http://localhost:11434', api_key='')
 dspy.configure(lm=lm, callbacks=[AgentLoggingCallback()])
 
-# Initialize the agent once
-agent = AssistantAgent()
+# At the top of the file, after the imports, initialize session state for live transcription
+if 'live_transcription' not in st.session_state:
+    st.session_state.live_transcription = ""
+if 'final_transcription' not in st.session_state:
+    st.session_state.final_transcription = ""
+if 'current_agent_input' not in st.session_state:
+    st.session_state.current_agent_input = []
+if 'agent' not in st.session_state:
+    st.session_state.agent = AssistantAgent()
+
 
 st.title("Call Assistant 📳 🤖")
 
@@ -129,9 +127,8 @@ def transcriber_callback(transcription):
         mlflow.dspy.autolog()
         mlflow.set_experiment("Agent Assistant Bank Call - From Audio")
         print(f"calling agent with {new_final}")
-        agent = AssistantAgent()
         st.session_state.current_agent_input.append(new_final)
-        prediction = agent(transcribed_text=new_final)
+        prediction = st.session_state.agent(transcribed_text=new_final)
         print("got prediction")
         st.session_state.prediction_results.append(prediction)
         st.session_state.analysis_complete = True
@@ -159,7 +156,7 @@ if st.button("🤖 Analyze"):
 
         # Get prediction
         st.session_state.current_agent_input.append(transcribed_text)
-        prediction = agent(transcribed_text=transcribed_text)
+        prediction = st.session_state.agent(transcribed_text=transcribed_text)
         st.session_state.prediction_results.append(prediction)
         st.session_state.analysis_complete = True
     elif input_method == "Upload audio file" and uploaded_file:
