@@ -117,6 +117,7 @@ def recognize_from_file(file_path):
         value='true'
     )
 
+    speech_config.set_property(speechsdk.PropertyId.Speech_SegmentationStrategy, "Semantic")
     audio_config = speechsdk.audio.AudioConfig(filename=file_path)
     conversation_transcriber = speechsdk.transcription.ConversationTranscriber(
         speech_config=speech_config,
