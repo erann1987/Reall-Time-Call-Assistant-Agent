@@ -113,6 +113,53 @@ else:
         )
 
 
+def add_result(prediction, input_text):
+    """Add a new result to the session state list"""
+    if 'results_list' not in st.session_state:
+        st.session_state.results_list = []
+        st.session_state.containers = []
+    
+    # Create a new container for the new result
+    st.session_state.containers.insert(0, st.container())
+    
+    # Add new result to the beginning of the list
+    st.session_state.results_list.insert(0, {
+        'prediction': prediction,
+        'input_text': input_text,
+        'container': st.session_state.containers[0]
+    })
+
+def display_single_result(result):
+    """Display a single result in its container"""
+    with result['container']:
+        st.markdown("## Analysis")
+        
+        # Display assistant results
+        st.subheader("🤖 Assistant Results")
+        st.write(result['prediction'].relevant_information)
+        
+        # Add citations section
+        st.subheader("📚 References")
+        st.write(result['prediction'].citations)
+        
+        with st.expander("💬 View Agent Input", expanded=False):
+            st.write(result['input_text'])
+
+        # Add expandable sections for trajectory and reasoning
+        with st.expander("💭 View Reasoning", expanded=False):
+            st.write(result['prediction'].reasoning)
+        
+        with st.expander("🔍 View Trajectory", expanded=False):
+            st.write(result['prediction'].trajectory)
+        
+        st.markdown("---")
+
+def display_results():
+    """Display all results from the session state list"""
+    if 'results_list' in st.session_state:
+        for result in st.session_state.results_list:
+            display_single_result(result)
+
 def transcriber_callback(transcription):
     # Create a sidebar for live transcription if it doesn't exist
     if 'live_transcription_container' not in st.session_state:
@@ -146,6 +193,11 @@ def transcriber_callback(transcription):
             prediction = agent(transcribed_text=text)
             print(f"got prediction: {prediction.relevant_information}")
             st.session_state.prediction_results.append(prediction)
+            
+            # Add the new result and display it immediately
+            add_result(prediction, text)
+            display_single_result(st.session_state.results_list[0])
+            
             st.session_state.analysis_complete = True
 
         # Concatenate final transcription and update display
@@ -174,6 +226,11 @@ if st.button("🤖 Analyze"):
         st.session_state.current_agent_input.append(transcribed_text)
         prediction = agent(transcribed_text=transcribed_text)
         st.session_state.prediction_results.append(prediction)
+        
+        # Add and display the result immediately
+        add_result(prediction, transcribed_text)
+        display_results()
+        
         st.session_state.analysis_complete = True
     elif input_method == "Upload audio file" and uploaded_file:
         with st.spinner("🤖 Analyzing audio..."):
@@ -192,39 +249,15 @@ if st.button("🤖 Analyze"):
     else:
         st.warning("Upload an audio file to analyze.")
 
-# Display results if available
+# Modify the display results section
 if st.session_state.analysis_complete and st.session_state.prediction_results:
     # Clear the thought container after agent is done
     if 'thought_container' in st.session_state:
         st.session_state.thought_container.empty()
     
-    st.markdown("# Analysis Results")
+    if input_method == "Write or paste text":
+        st.markdown("# Analysis Results")
     
-    # Display all predictions in reverse chronological order
-    for i, prediction in enumerate(reversed(st.session_state.prediction_results), 1):
-        with st.container():
-            st.markdown(f"## Analysis #{len(st.session_state.prediction_results) - i + 1}")
-            
-            # Display assistant results
-            st.subheader("🤖 Assistant Results")
-            st.write(prediction.relevant_information)
-            
-            # Add citations section
-            st.subheader("📚 References")
-            st.write(prediction.citations)
-            
-            with st.expander("💬 View Agent Input", expanded=False):
-                st.write(st.session_state.current_agent_input[len(st.session_state.prediction_results) - i])
-
-            # Add expandable sections for trajectory and reasoning
-            with st.expander("💭 View Reasoning", expanded=False):
-                st.write(prediction.reasoning)
-            
-            with st.expander("🔍 View Trajectory", expanded=False):
-                st.write(prediction.trajectory)
-            
-            st.markdown("---")
-
     # MLflow button with callback
     if st.button("📊 View MLflow Experiment Results", on_click=launch_mlflow):
         st.success("🚀 MLflow UI launched! Opening in new tab...")
