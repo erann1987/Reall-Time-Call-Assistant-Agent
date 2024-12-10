@@ -192,11 +192,13 @@ def transcriber_callback(transcription):
             mlflow.set_experiment("Agent Assistant Bank Call - From Audio")
             prediction = agent(transcribed_text=text)
             print(f"got prediction: {prediction.relevant_information}")
-            st.session_state.prediction_results.append(prediction)
-            
-            # Add the new result and display it immediately
-            add_result(prediction, text)
-            display_single_result(st.session_state.results_list[0])
+            if prediction.relevant_information != "Waiting for more information":
+                print(f"calling agent with {text}")
+                st.session_state.current_agent_input.append(text)
+                st.session_state.prediction_results.append(prediction)
+                # Add the new result and display it immediately
+                add_result(prediction, text)
+                display_single_result(st.session_state.results_list[0])
             
             st.session_state.analysis_complete = True
 
@@ -205,8 +207,6 @@ def transcriber_callback(transcription):
         st.session_state.final_transcription += new_final
         st.session_state.live_transcription = ""  # Clear interim transcription
         
-        print(f"calling agent with {new_final}")
-        st.session_state.current_agent_input.append(new_final)
         thread = threading.Thread(target=run_agent, args=(transcription['text'],))
         add_script_run_ctx(thread)
         thread.start()
