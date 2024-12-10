@@ -26,7 +26,8 @@ documents =[
   }
 ]
 
-collection_name = 'bank_call_agent'
+collection_name = 'synthetic_call'
+db_persist_path = './synthetic_call_db'
 
 ef = embedding_functions.OpenAIEmbeddingFunction (
     api_key=os.getenv('AZURE_API_KEY'),
@@ -36,7 +37,6 @@ ef = embedding_functions.OpenAIEmbeddingFunction (
     model_name=os.getenv('AZURE_EMBEDDING_MODEL')
 )
 
-db_persist_path = './bank_call_agent_db'
 chroma_client = chromadb.PersistentClient(path=db_persist_path)
 
 try:
@@ -62,13 +62,13 @@ def retrieve_notes(query: str) -> str:
     Retrieve relevant notes from the previous call.
 
     Args:
-        query (str): The query to search for in the notes (Language: German).
+        query (str): The query to search for in the notes.
 
     Returns:
         str: Relevant notes from the previous call with distance values.
     """
     search_results = retriever(query, k=3)
-    return "\n\n".join([f"- Date: {d['metadatas']['date']}\nDetails: {d['long_text']}\nDistance: {d['score']}" for i, d in enumerate(search_results)])
+    return "\n\n".join([f"{d['long_text']}\nDistance: {d['score']}" for i, d in enumerate(search_results)])
 
 def summarize_notes(relevant_notes: str) -> str:
     """
