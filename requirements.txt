@@ -7,3 +7,4 @@ azure-identity
 python-dotenv
 ollama
 azure-cognitiveservices-speech
+langchain-text-splitters
