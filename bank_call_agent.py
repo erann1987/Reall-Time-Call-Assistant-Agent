@@ -8,26 +8,11 @@ import os
 import mlflow
 from dspy.utils.callback import BaseCallback
 import json
-# Load environment variables
 load_dotenv()
 
-documents =[
-  {
-    "date": "21.10.2024",
-    "details": "Kunde ruft an und hat Interesse an konservativen Anlagemöglichkeiten. Erkläre dem Kunden unsere UBS Festgeldanlage. Kunde wird sich dies überlegen"
-  },
-  {
-    "date": "15.08.2024",
-    "details": "Kunde ruft an und möchte eine neue Debitkarte bestellen, da die jetzige defekt ist. Eine neue, kostenlose Karte für den Kunden bestellt"
-  },
-  {
-    "date": "10.05.2024",
-    "details": "Kunde hat das Digital Banking gesperrt und benötigt erneut einen Aktivierungscode. Aktivierungscode für den Kunden bestellt"
-  }
-]
-
-collection_name = 'synthetic_call'
-db_persist_path = './synthetic_call_db'
+# take from env
+collection_name = os.getenv('DB_COLLECTION_NAME')
+db_persist_path = os.getenv('DB_PERSIST_PATH')
 
 ef = embedding_functions.OpenAIEmbeddingFunction (
     api_key=os.getenv('AZURE_API_KEY'),
@@ -38,18 +23,7 @@ ef = embedding_functions.OpenAIEmbeddingFunction (
 )
 
 chroma_client = chromadb.PersistentClient(path=db_persist_path)
-
-try:
-    collection = chroma_client.get_collection(collection_name, embedding_function=ef)
-except:
-    collection = chroma_client.create_collection(collection_name, embedding_function=ef)
-    collection.add(
-        documents=[d['details'] for d in documents],
-        ids=[str(uuid.uuid4()) for _ in documents],
-        metadatas=[{'date': d['date']} for d in documents]
-    )
-
-
+collection = chroma_client.get_collection(collection_name, embedding_function=ef)
 retriever = ChromadbRM(
     collection_name=collection_name,
     persist_directory=db_persist_path,

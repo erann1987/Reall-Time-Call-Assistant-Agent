@@ -7,8 +7,6 @@ import uuid
 import chromadb
 load_dotenv()
 
-file_path = "mortgage.txt"
-
 notes = [
     "Discussed conservative investment options, including fixed deposits and government bonds. Client interested in long-term, low-risk investments. Explained the benefits of each option, including guaranteed returns and minimal risk. Client will review the information and decide on the best option.",
     "Provided details on the conservative investment fund. Client considering starting with a minimum investment of $1,000. Explained the fund's asset mix, management team, and historical performance. Client appreciated the diversification and steady returns.",
@@ -63,8 +61,9 @@ documents = [
     for note in notes
 ]
 
-collection_name = 'synthetic_call'
-db_persist_path = './synthetic_call_db'
+# take from env
+collection_name = os.getenv('DB_COLLECTION_NAME')
+db_persist_path = os.getenv('DB_PERSIST_PATH')
 
 ef = embedding_functions.OpenAIEmbeddingFunction (
     api_key=os.getenv('AZURE_API_KEY'),
