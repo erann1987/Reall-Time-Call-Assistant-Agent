@@ -1,7 +1,6 @@
 import os
 import azure.cognitiveservices.speech as speechsdk
 from pydub import AudioSegment
-# load environment variables
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -51,10 +50,11 @@ for utterance in call_transcript.split('\n'):
     elif utterance.startswith('Customer:'):
         customer_utterances.append(utterance.replace('Customer:', '').strip())
 
-
-
 # This example requires environment variables named "SPEECH_KEY" and "SPEECH_REGION"
-speech_config = speechsdk.SpeechConfig(subscription=os.environ.get('AZURE_SPEECH_KEY'), region=os.environ.get('AZURE_SPEECH_REGION'))
+speech_config = speechsdk.SpeechConfig(
+    subscription=os.environ.get('AZURE_SPEECH_KEY'),
+    region=os.environ.get('AZURE_SPEECH_REGION')
+)
 audio_config = speechsdk.audio.AudioOutputConfig(use_default_speaker=True)
 
 advisor_synthetic_voice = 'en-US-AvaMultilingualNeural'

@@ -3,30 +3,30 @@ import chromadb.utils.embedding_functions as embedding_functions
 import uuid
 from dspy.retrieve.chromadb_rm import ChromadbRM
 import dspy
-from dotenv import load_dotenv
 import os
 import mlflow
 from dspy.utils.callback import BaseCallback
 import json
+from dotenv import load_dotenv
 load_dotenv()
+import yaml
 
-# take from env
-collection_name = os.getenv('DB_COLLECTION_NAME')
-db_persist_path = os.getenv('DB_PERSIST_PATH')
+# Load config
+with open('config.yaml', 'r') as file:
+    config = yaml.safe_load(file)
 
 ef = embedding_functions.OpenAIEmbeddingFunction (
-    api_key=os.getenv('AZURE_API_KEY'),
-    api_base=os.getenv('AZURE_API_BASE'),
-    api_version=os.getenv('AZURE_API_VERSION'),
+    api_key=os.getenv('AZURE_OPENAI_API_KEY'),
+    api_base=os.getenv('AZURE_OPENAI_API_BASE'),
+    api_version=os.getenv('AZURE_OPENAI_API_VERSION'),
     api_type='azure',
-    model_name=os.getenv('AZURE_EMBEDDING_MODEL')
+    model_name=config.get('azure_embedding_model')
 )
 
-chroma_client = chromadb.PersistentClient(path=db_persist_path)
-collection = chroma_client.get_collection(collection_name, embedding_function=ef)
+chroma_client = chromadb.PersistentClient(path=config.get('db_persist_path'))
 retriever = ChromadbRM(
-    collection_name=collection_name,
-    persist_directory=db_persist_path,
+    collection_name=config.get('db_collection_name'),
+    persist_directory=config.get('db_persist_path'),
     embedding_function=ef,
     client=chroma_client
 )
@@ -129,10 +129,10 @@ class AssistantAgent(dspy.Module):
 
 # # Configure LM
 # lm = dspy.LM(
-#     model=f"azure/{os.getenv('AZURE_DEPLOYMENT_MODEL')}",
-#     api_key=os.getenv('AZURE_API_KEY'),
-#     api_base=os.getenv('AZURE_API_BASE'),
-#     api_version=os.getenv('AZURE_API_VERSION'),
+#     model=f"azure/{config.get('azure_deployment_model')}",
+#     api_key=os.getenv('AZURE_OPENAI_API_KEY'),
+#     api_base=os.getenv('AZURE_OPENAI_API_BASE'),
+#     api_version=os.getenv('AZURE_OPENAI_API_VERSION'),
 #     cache=False
 # )
 # dspy.configure(lm=lm, callbacks=[AgentLoggingCallback()])

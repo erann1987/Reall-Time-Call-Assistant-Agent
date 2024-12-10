@@ -43,3 +43,7 @@ synthetic_call_db
 *.log 
 
 .DS_Store
+
+# Audio files
+*.wav
+*.mp3

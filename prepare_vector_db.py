@@ -1,11 +1,15 @@
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from dspy.retrieve.chromadb_rm import ChromadbRM
 import chromadb.utils.embedding_functions as embedding_functions
 import os
 from dotenv import load_dotenv
 import uuid
 import chromadb
 load_dotenv()
+import yaml
+
+# Load config
+with open('config.yaml', 'r') as file:
+    config = yaml.safe_load(file)
 
 notes = [
     "Discussed conservative investment options, including fixed deposits and government bonds. Client interested in long-term, low-risk investments. Explained the benefits of each option, including guaranteed returns and minimal risk. Client will review the information and decide on the best option.",
@@ -61,24 +65,26 @@ documents = [
     for note in notes
 ]
 
-# take from env
-collection_name = os.getenv('DB_COLLECTION_NAME')
-db_persist_path = os.getenv('DB_PERSIST_PATH')
-
 ef = embedding_functions.OpenAIEmbeddingFunction (
-    api_key=os.getenv('AZURE_API_KEY'),
-    api_base=os.getenv('AZURE_API_BASE'),
-    api_version=os.getenv('AZURE_API_VERSION'),
+    api_key=os.getenv('AZURE_OPENAI_API_KEY'),
+    api_base=os.getenv('AZURE_OPENAI_API_BASE'),
+    api_version=os.getenv('AZURE_OPENAI_API_VERSION'),
     api_type='azure',
-    model_name=os.getenv('AZURE_EMBEDDING_MODEL')
+    model_name=config.get('azure_embedding_model')
 )
 
-chroma_client = chromadb.PersistentClient(path=db_persist_path)
+chroma_client = chromadb.PersistentClient(path=config.get('db_persist_path'))
 
 try:
-    collection = chroma_client.get_collection(collection_name, embedding_function=ef)
+    collection = chroma_client.get_collection(
+        config.get('db_collection_name'), 
+        embedding_function=ef
+    )
 except:
-    collection = chroma_client.create_collection(collection_name, embedding_function=ef)
+    collection = chroma_client.create_collection(
+        config.get('db_collection_name'), 
+        embedding_function=ef
+    )
     collection.add(
         documents=[d['details'] for d in documents],
         ids=[str(uuid.uuid4()) for _ in documents],
