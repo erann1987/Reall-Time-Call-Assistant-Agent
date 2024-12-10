@@ -4,7 +4,9 @@ An AI-powered assistant that analyzes bank call conversations using DSPy and Azu
 
 ## Features
 
-- Real-time analysis of bank call utterances
+- Synthetic call data generation
+- Speech-to-text conversion
+- Real-time agent analysis of bank call utterances
 - Dynamic display of agent's thought process
 - Detailed analysis results with trajectory and reasoning
 - MLflow integration for experiment tracking
@@ -28,29 +30,25 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-4. Create a `.env` file with your Azure OpenAI credentials:
-```env
-AZURE_API_BASE=your_api_base
-AZURE_API_KEY=your_api_key
-AZURE_API_VERSION=your_api_version
-AZURE_DEPLOYMENT_MODEL=your_model_name
-AZURE_EMBEDDING_MODEL=your_embedding_model
-```
-
-## Usage
-
-1. Run the Streamlit app:
+4. Copy the `.env-example` file to `.env` and fill in the Azure OpenAI credentials:
 ```bash
-streamlit run app.py
+cp .env-example .env
 ```
-
-2. Enter a speaker ID (1 for client, 2 for advisor) and the call utterance
-3. Click "Analyze Utterance" to see the analysis
-4. View the results and optionally explore the MLflow experiments
 
 ## Project Structure
 
+- `synthetic_calls.jsonl`: Synthetic call data generated from a call transcript
+- `prepare_vector_db.py`: Vector database preparation
 - `app.py`: Main Streamlit application
+- `stt.py`: Speech-to-text conversion
 - `bank_call_agent.py`: DSPy agent implementation
+- `config.yaml`: Configuration file for Azure OpenAI models usage
 - `.env`: Configuration file for Azure OpenAI credentials
 - `requirements.txt`: Project dependencies 
+
+## Usage
+
+Run the Streamlit app:
+```bash
+streamlit run app.py
+```
