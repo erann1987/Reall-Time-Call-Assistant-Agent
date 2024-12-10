@@ -11,7 +11,10 @@ import os
 import dspy
 from dspy.utils.callback import BaseCallback
 import json
+from streamlit.runtime.scriptrunner import add_script_run_ctx
 load_dotenv()
+
+agent_threads = []
 
 # Custom callback for displaying thoughts and actions
 class AgentLoggingCallback(BaseCallback):
@@ -34,6 +37,34 @@ class AgentLoggingCallback(BaseCallback):
                     args_str = json.dumps(outputs.get("next_tool_args", {}), indent=2)
                     st.markdown(f"**🔧 Using Tool:** calling `{outputs['next_tool_name']}` with `{args_str}`")
 
+
+def launch_mlflow():
+    if not st.session_state.mlflow_launched:
+        def run_mlflow():
+            subprocess.Popen(['mlflow', 'ui', '--port', '5001'])
+            time.sleep(2)
+            webbrowser.open('http://127.0.0.1:5001', new=2)
+        
+        thread = threading.Thread(target=run_mlflow)
+        thread.start()
+        st.session_state.mlflow_launched = True
+
+
+# Initialize session states
+if 'live_transcription' not in st.session_state:
+    st.session_state.live_transcription = ""
+if 'final_transcription' not in st.session_state:
+    st.session_state.final_transcription = ""
+if 'current_agent_input' not in st.session_state:
+    st.session_state.current_agent_input = []
+if 'prediction_results' not in st.session_state:
+    st.session_state.prediction_results = []
+if 'analysis_complete' not in st.session_state:
+    st.session_state.analysis_complete = False
+if 'mlflow_launched' not in st.session_state:
+    st.session_state.mlflow_launched = False
+
+# Configure LM
 lm = dspy.LM(
     model=f"azure/{os.getenv('AZURE_DEPLOYMENT_MODEL')}",
     api_key=os.getenv('AZURE_API_KEY'),
@@ -43,16 +74,7 @@ lm = dspy.LM(
 )
 dspy.configure(lm=lm, callbacks=[AgentLoggingCallback()])
 
-# At the top of the file, after the imports, initialize session state for live transcription
-if 'live_transcription' not in st.session_state:
-    st.session_state.live_transcription = ""
-if 'final_transcription' not in st.session_state:
-    st.session_state.final_transcription = ""
-if 'current_agent_input' not in st.session_state:
-    st.session_state.current_agent_input = []
-if 'agent' not in st.session_state:
-    st.session_state.agent = AssistantAgent()
-
+agent = AssistantAgent()
 
 st.title("Call Assistant 📳 🤖")
 
@@ -75,24 +97,21 @@ if input_method == "Upload audio file":
         with open("temp_audio.wav", "wb") as f:
             f.write(uploaded_file.read())
 
-else:  # Write or paste text option
-    # Create the input text area
+else:
     col1, col2 = st.columns([1, 4])
     with col1:
-        speaker_id = st.text_input("📢 Speaker ID:", value="2", 
-                                  help="Enter the speaker ID (e.g., 1 for client, 2 for advisor)")
+        speaker_id = st.text_input(
+            "📢 Speaker ID:", 
+            value="2", 
+            help="Enter the speaker ID (e.g., 1 for client, 2 for advisor)"
+        )
     with col2:
-        transcribed_text = st.text_area("📝 Enter or paste text:", 
-                                       value=st.session_state['final_transcription'],
-                                       height=150)
+        transcribed_text = st.text_area(
+            "📝 Enter or paste text:", 
+            value=st.session_state['final_transcription'],
+            height=150
+        )
 
-# Initialize session states
-if 'prediction_results' not in st.session_state:
-    st.session_state.prediction_results = []
-if 'analysis_complete' not in st.session_state:
-    st.session_state.analysis_complete = False
-if 'mlflow_launched' not in st.session_state:
-    st.session_state.mlflow_launched = False
 
 def transcriber_callback(transcription):
     # Create a sidebar for live transcription if it doesn't exist
@@ -103,47 +122,44 @@ def transcriber_callback(transcription):
     if transcription['type'] == 'interim':
         # Update the live transcription display with interim results
         st.session_state.live_transcription = f"Speaker {transcription['speaker_id']}: {transcription['text']}"
-        st.session_state.live_transcription_container.markdown(f"""
-        ### 📝 Live Transcription
-        {st.session_state.final_transcription}
-        *{st.session_state.live_transcription}*
-        """)
+        with st.session_state.live_transcription_container:
+            st.text(f"""
+                * 📝 Live Transcription *
+                
+                {st.session_state.final_transcription}
+                {st.session_state.live_transcription}
+            """)
     
     elif transcription['type'] == 'final':
+        def run_agent(text):
+            lm = dspy.LM(
+                model=f"azure/{os.getenv('AZURE_DEPLOYMENT_MODEL')}",
+                api_key=os.getenv('AZURE_API_KEY'),
+                api_base=os.getenv('AZURE_API_BASE'),
+                api_version=os.getenv('AZURE_API_VERSION'),
+                cache=False
+            )
+            dspy.configure(lm=lm, callbacks=[AgentLoggingCallback()])
+            agent = AssistantAgent()
+            mlflow.dspy.autolog()
+            mlflow.set_experiment("Agent Assistant Bank Call - From Audio")
+            prediction = agent(transcribed_text=text)
+            print(f"got prediction: {prediction.relevant_information}")
+            st.session_state.prediction_results.append(prediction)
+            st.session_state.analysis_complete = True
+
         # Concatenate final transcription and update display
         new_final = f"Speaker {transcription['speaker_id']}: {transcription['text']}\n"
         st.session_state.final_transcription += new_final
         st.session_state.live_transcription = ""  # Clear interim transcription
-
-        lm = dspy.LM(
-            model=f"azure/{os.getenv('AZURE_DEPLOYMENT_MODEL')}",
-            api_key=os.getenv('AZURE_API_KEY'),
-            api_base=os.getenv('AZURE_API_BASE'),
-            api_version=os.getenv('AZURE_API_VERSION'),
-            cache=False
-        )
-        dspy.configure(lm=lm, callbacks=[AgentLoggingCallback()])
-
-        mlflow.dspy.autolog()
-        mlflow.set_experiment("Agent Assistant Bank Call - From Audio")
+        
         print(f"calling agent with {new_final}")
         st.session_state.current_agent_input.append(new_final)
-        prediction = st.session_state.agent(transcribed_text=new_final)
-        print("got prediction")
-        st.session_state.prediction_results.append(prediction)
-        st.session_state.analysis_complete = True
-        
-
-def launch_mlflow():
-    if not st.session_state.mlflow_launched:
-        def run_mlflow():
-            subprocess.Popen(['mlflow', 'ui', '--port', '5001'])
-            time.sleep(2)
-            webbrowser.open('http://127.0.0.1:5001', new=2)
-        
-        thread = threading.Thread(target=run_mlflow)
+        thread = threading.Thread(target=run_agent, args=(transcription['text'],))
+        add_script_run_ctx(thread)
         thread.start()
-        st.session_state.mlflow_launched = True
+        agent_threads.append(thread)
+
 
 # Create the submit button
 if st.button("🤖 Analyze"):
@@ -156,7 +172,7 @@ if st.button("🤖 Analyze"):
 
         # Get prediction
         st.session_state.current_agent_input.append(transcribed_text)
-        prediction = st.session_state.agent(transcribed_text=transcribed_text)
+        prediction = agent(transcribed_text=transcribed_text)
         st.session_state.prediction_results.append(prediction)
         st.session_state.analysis_complete = True
     elif input_method == "Upload audio file" and uploaded_file:
@@ -164,6 +180,8 @@ if st.button("🤖 Analyze"):
             from stt import recognize_from_file, transcription_manager
             transcription_manager.set_consumer_callback(transcriber_callback)
             recognize_from_file("temp_audio.wav")
+            for thread in agent_threads:
+                thread.join()
             st.success("✨ Analysis complete!")
         
         # Clean up the temporary file
