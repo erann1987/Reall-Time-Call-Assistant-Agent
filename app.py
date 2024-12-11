@@ -25,22 +25,19 @@ agent_threads = []
 class AgentLoggingCallback(BaseCallback):
     def __init__(self):
         super().__init__()
-        if 'thought_container' not in st.session_state:
-            st.session_state.thought_container = st.empty()
     
     def on_module_end(self, call_id, outputs, exception):
         # Update the display with current step
         with st.session_state.thought_container.container():
-            st.subheader("🤔 Agent's Current Step")
             if "next_thought" in outputs:
-                st.markdown(f"**💭 Thinking:** {outputs['next_thought']}")
+                st.info(f"💭 Thinking: {outputs['next_thought']}")
             
             if "next_tool_name" in outputs:
                 if outputs["next_tool_name"].lower() == "finish":
-                    st.markdown("**✅ Finish**")
+                    st.info("✅ Finish")
                 else:
                     args_str = json.dumps(outputs.get("next_tool_args", {}), indent=2)
-                    st.markdown(f"**🔧 Using Tool:** calling `{outputs['next_tool_name']}` with `{args_str}`")
+                    st.info(f"🔧 Using Tool: `{outputs['next_tool_name']}` with `{args_str}`")
 
 def dspy_configure():
     lm = dspy.LM(
@@ -75,8 +72,10 @@ if 'mlflow_launched' not in st.session_state:
     st.session_state.mlflow_launched = False
 if 'results_list' not in st.session_state:
     st.session_state.results_list = []
-if 'containers' not in st.session_state:
-    st.session_state.containers = []
+if 'thought_container' not in st.session_state:
+    st.session_state.thought_container = st.empty()
+if 'results_placeholder' not in st.session_state:
+    st.session_state.results_placeholder = st.empty()
 
 st.title("Call Assistant 📳 🤖")
 
@@ -102,40 +101,27 @@ else:
     transcribed_text = st.text_area("📝 Enter or paste text:", height=150)
 
 
-def add_result(prediction, input_text, timestamp):
-    # Create a new container for the new result
-    st.session_state.containers.insert(0, st.container())
-    
-    # Add new result to the beginning of the list
-    st.session_state.results_list.insert(0, {
-        'prediction': prediction,
-        'input_text': input_text,
-        'container': st.session_state.containers[0],
-        'timestamp': timestamp
-    })
+def display_results():
+    st.session_state.results_placeholder.empty()
+    with st.session_state.results_placeholder.container():
+        st.session_state.results_list.sort(key=lambda x: x['timestamp'], reverse=True)
+        for result in st.session_state.results_list:
+            st.subheader("🤖 Assistant Results")
+            st.write(result['prediction'].relevant_information)
+            
+            st.subheader("📚 References")
+            st.write(result['prediction'].citations)
+            
+            with st.expander("💬 View Agent Input", expanded=False):
+                st.write(result['input_text'])
 
-def display_single_result(result):
-    """Display a single result in its container"""
-    with result['container']:        
-        # Display assistant results
-        st.subheader("🤖 Assistant Results")
-        st.write(result['prediction'].relevant_information)
-        
-        # Add citations section
-        st.subheader("📚 References")
-        st.write(result['prediction'].citations)
-        
-        with st.expander("💬 View Agent Input", expanded=False):
-            st.write(result['input_text'])
-
-        # Add expandable sections for trajectory and reasoning
-        with st.expander("💭 View Reasoning", expanded=False):
-            st.write(result['prediction'].reasoning)
-        
-        with st.expander("🔍 View Trajectory", expanded=False):
-            st.write(result['prediction'].trajectory)
-        
-        st.markdown("---")
+            with st.expander("💭 View Reasoning", expanded=False):
+                st.write(result['prediction'].reasoning)
+            
+            with st.expander("🔍 View Trajectory", expanded=False):
+                st.write(result['prediction'].trajectory)
+            
+            st.markdown("---")
 
 
 def transcriber_callback(transcription):
@@ -164,12 +150,12 @@ def transcriber_callback(transcription):
             
             if prediction.relevant_information != "Waiting for more information":
                 print(f"got relevant information")
-                # Add the new result and display it immediately
-                # if text not in [result['input_text'] for result in st.session_state.results_list]:
-                add_result(prediction, text, timestamp)
-                # reverse sort results by timestamp
-                # st.session_state.results_list.sort(key=lambda x: x['timestamp'], reverse=True)
-                display_single_result(st.session_state.results_list[0])
+                st.session_state.results_list.append({
+                    'prediction': prediction,
+                    'input_text': text,
+                    'timestamp': timestamp
+                })
+                display_results()
             
             st.session_state.analysis_complete = True
 
@@ -179,7 +165,11 @@ def transcriber_callback(transcription):
         st.session_state.live_transcription = ""  # Clear interim transcription
         
         print(f"got utterance: {transcription['text']}")
-        thread = threading.Thread(target=run_agent, args=(transcription['text'], datetime.now(),))
+        text = f"Speaker {transcription['speaker_id']}: {transcription['text']}"
+        thread = threading.Thread(
+            target=run_agent, 
+            args=(text, datetime.now(),)
+        )
         add_script_run_ctx(thread)
         thread.start()
         agent_threads.append(thread)
@@ -197,8 +187,12 @@ if st.button("🤖 Analyze"):
         prediction = agent(transcribed_text=transcribed_text)
         
         # Add and display the result immediately
-        add_result(prediction, transcribed_text, datetime.now())
-        display_single_result(st.session_state.results_list[0])
+        st.session_state.results_list.append({
+            'prediction': prediction,
+            'input_text': transcribed_text,
+            'timestamp': datetime.now()
+        })
+        display_results()
         
         st.session_state.analysis_complete = True
     elif input_method == "Upload audio file" and uploaded_file:
