@@ -12,7 +12,12 @@ import dspy
 from dspy.utils.callback import BaseCallback
 import json
 from streamlit.runtime.scriptrunner import add_script_run_ctx
+from datetime import datetime
+import yaml
 load_dotenv()
+
+with open('config.yaml', 'r') as file:
+    config = yaml.safe_load(file)
 
 agent_threads = []
 
@@ -39,7 +44,7 @@ class AgentLoggingCallback(BaseCallback):
 
 def dspy_configure():
     lm = dspy.LM(
-        model=f"azure/{os.getenv('AZURE_DEPLOYMENT_MODEL')}",
+        model=f"azure/{config.get('azure_deployment_model')}",
         api_key=os.getenv('AZURE_OPENAI_API_KEY'),
         api_base=os.getenv('AZURE_OPENAI_API_BASE'),
         api_version=os.getenv('AZURE_OPENAI_API_VERSION'),
@@ -68,6 +73,10 @@ if 'analysis_complete' not in st.session_state:
     st.session_state.analysis_complete = False
 if 'mlflow_launched' not in st.session_state:
     st.session_state.mlflow_launched = False
+if 'results_list' not in st.session_state:
+    st.session_state.results_list = []
+if 'containers' not in st.session_state:
+    st.session_state.containers = []
 
 st.title("Call Assistant 📳 🤖")
 
@@ -90,19 +99,10 @@ if input_method == "Upload audio file":
         with open("temp_audio.wav", "wb") as f:
             f.write(uploaded_file.read())
 else:
-    transcribed_text = st.text_area(
-        "📝 Enter or paste text:", 
-        value=st.session_state['final_transcription'],
-        height=150
-    )
+    transcribed_text = st.text_area("📝 Enter or paste text:", height=150)
 
 
-def add_result(prediction, input_text):
-    """Add a new result to the session state list"""
-    if 'results_list' not in st.session_state:
-        st.session_state.results_list = []
-        st.session_state.containers = []
-    
+def add_result(prediction, input_text, timestamp):
     # Create a new container for the new result
     st.session_state.containers.insert(0, st.container())
     
@@ -110,7 +110,8 @@ def add_result(prediction, input_text):
     st.session_state.results_list.insert(0, {
         'prediction': prediction,
         'input_text': input_text,
-        'container': st.session_state.containers[0]
+        'container': st.session_state.containers[0],
+        'timestamp': timestamp
     })
 
 def display_single_result(result):
@@ -136,11 +137,6 @@ def display_single_result(result):
         
         st.markdown("---")
 
-def display_results():
-    """Display all results from the session state list"""
-    if 'results_list' in st.session_state:
-        for result in st.session_state.results_list:
-            display_single_result(result)
 
 def transcriber_callback(transcription):
     # Create a sidebar for live transcription if it doesn't exist
@@ -159,18 +155,20 @@ def transcriber_callback(transcription):
             )
     
     elif transcription['type'] == 'final':
-        def run_agent(text):
+        def run_agent(text, timestamp):
             dspy_configure()
             agent = AssistantAgent()
             mlflow.dspy.autolog()
             mlflow.set_experiment("Agent Assistant Bank Call - From Audio")
             prediction = agent(transcribed_text=text)
-            print(f"got prediction: {prediction.relevant_information}")
             
             if prediction.relevant_information != "Waiting for more information":
-                print(f"calling agent with {text}")
+                print(f"got relevant information")
                 # Add the new result and display it immediately
-                add_result(prediction, text)
+                # if text not in [result['input_text'] for result in st.session_state.results_list]:
+                add_result(prediction, text, timestamp)
+                # reverse sort results by timestamp
+                # st.session_state.results_list.sort(key=lambda x: x['timestamp'], reverse=True)
                 display_single_result(st.session_state.results_list[0])
             
             st.session_state.analysis_complete = True
@@ -180,7 +178,8 @@ def transcriber_callback(transcription):
         st.session_state.final_transcription += f"\n{new_final}"
         st.session_state.live_transcription = ""  # Clear interim transcription
         
-        thread = threading.Thread(target=run_agent, args=(transcription['text'],))
+        print(f"got utterance: {transcription['text']}")
+        thread = threading.Thread(target=run_agent, args=(transcription['text'], datetime.now(),))
         add_script_run_ctx(thread)
         thread.start()
         agent_threads.append(thread)
@@ -198,8 +197,8 @@ if st.button("🤖 Analyze"):
         prediction = agent(transcribed_text=transcribed_text)
         
         # Add and display the result immediately
-        add_result(prediction, transcribed_text)
-        display_results()
+        add_result(prediction, transcribed_text, datetime.now())
+        display_single_result(st.session_state.results_list[0])
         
         st.session_state.analysis_complete = True
     elif input_method == "Upload audio file" and uploaded_file:

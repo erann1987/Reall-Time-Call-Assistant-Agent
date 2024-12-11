@@ -13,7 +13,7 @@ from stt import recognize_from_file, transcription_manager
 load_dotenv()
 
 lm = dspy.LM(
-    model=f"azure/{os.getenv('AZURE_DEPLOYMENT_MODEL')}",
+    model=f"azure/{config.get('azure_deployment_model')}",
     api_key=os.getenv('AZURE_OPENAI_API_KEY'),
     api_base=os.getenv('AZURE_OPENAI_API_BASE'),
     api_version=os.getenv('AZURE_OPENAI_API_VERSION'),
@@ -48,11 +48,11 @@ def main():
     audio_path = "audio.wav"
     # Configure LM
     lm = dspy.LM(
-        model=f"azure/{os.getenv('AZURE_DEPLOYMENT_MODEL')}",
+        model=f"azure/{config.get('azure_deployment_model')}",
         api_key=os.getenv('AZURE_OPENAI_API_KEY'),
         api_base=os.getenv('AZURE_OPENAI_API_BASE'),
-            api_version=os.getenv('AZURE_OPENAI_API_VERSION'),
-            cache=False
+        api_version=os.getenv('AZURE_OPENAI_API_VERSION'),
+        cache=False
     )
     dspy.configure(lm=lm)
     transcription_manager.set_consumer_callback(transcriber_callback)

@@ -32,66 +32,63 @@ retriever = ChromadbRM(
 )
 
 def retrieve_notes(query: str) -> str:
-    """
-    Retrieve relevant notes from the previous call.
+    """Retrieve relevant notes from the previous call.
 
     Args:
         query (str): The query to search for in the notes.
 
     Returns:
-        str: Relevant notes from the previous call with distance values.
-    """
+        str: Relevant notes from the previous call with distance values."""
     search_results = retriever(query, k=3)
-    return "\n\n".join([f"{d['long_text']}\nDistance: {d['score']}" for i, d in enumerate(search_results)])
+    return  "\n\n".join([f"{d['long_text']}\nDistance: {d['score']}" for i, d in enumerate(search_results)])
 
 def summarize_notes(relevant_notes: str) -> str:
-    """
-    Summarize relevant notes from the previous call.
+    """Summarize relevant notes from the previous call.
     Provide a bullet point summary of the relevant notes retrieved from the call.
     Input:
         relevant_notes (str): Relevant notes from the previous call with low distance values.
     Output:
-        str: A bullet points summary in English of the relevant notes retrieved from the call.
-    """
+        str: A bullet points summary in English of the relevant notes retrieved from the call."""
     notes_summary_module = dspy.ChainOfThought(signature=NotesSummary)
     notes_summary = notes_summary_module(relevant_notes = relevant_notes)
     return notes_summary.summary
 
 class NotesSummary(dspy.Signature):
-    """
-    Summarize relevant notes from the previous call.
-    Provide a bullet point summary of the relevant notes retrieved from the call.
-    """
+    """Summarize relevant notes from the previous call.
+    Provide a bullet point summary of the relevant notes retrieved from the call."""
     relevant_notes: str = dspy.InputField(desc="Relevant notes from the previous call with low distance values")
     summary: str = dspy.OutputField(desc="A bullet points summary in English of the relevant notes retrieved from the call")
 
 class Assistant(dspy.Signature):
-    """
-    You are a ReACT (Reasoning and Action) agent designed to assist wealth management advisors during client calls by surfacing relevant notes from previous interactions. Your primary goal is to enhance the advisor's efficiency and provide timely, accurate information. Here are your instructions:
+    """You are a ReACT (Reasoning and Action) agent designed to assist wealth management advisors during client calls by surfacing relevant notes from previous interactions. Your primary goal is to enhance the advisor's efficiency and provide timely, accurate information. Here are your instructions:
 
     Real-Time Transcription Input:
     You will receive real-time transcribed text from the client-advisor call. This transcription will serve as the input for your reasoning and actions.
   
     Intent Recognition:
-    Analyze the transcribed text to detect the client's intent and identify key topics being discussed.
+    Carefully analyze the transcribed text to detect the client's intent and identify key topics being discussed.
+    Do not proceed with searching unless you have high confidence in understanding the client's specific intent.
+    If the intent is ambiguous or unclear, continue listening and wait for more context.
 
     Note Retrieval:
-    When a relevant intent is detected, generate a query vector based on the current context.
-    Use the query vector to search the vector database for notes from previous interactions that match the current context.
-    If you think more information is needed, wait for more transcribed text to arrive before taking action.
+    Only when you have clearly identified a specific client intent, proceed with:
+    - Generating a focused query vector based on the confirmed intent and context
+    - Searching the vector database for relevant notes from previous interactions
+    If there is any uncertainty about the intent, wait for more transcribed text rather than performing premature searches.
     
     Display Notes:
-    Dynamically display the retrieved notes to the advisor in real-time, ensuring they are clear and organized.
-    Highlight the most relevant parts of the notes to help the advisor quickly grasp important information.
+    Once relevant notes are found based on a clear intent:
+    - Dynamically display them to the advisor in real-time
+    - Ensure they are clearly organized and directly related to the identified intent
+    - Highlight the most relevant parts to help the advisor quickly grasp important information
     Output language: English
 
     Citations:
-    Include citations for the information you provide, indicating the sources of the retrieved notes and any other relevant data.
-    """
+    Include citations for the information you provide, indicating the sources of the retrieved notes and any other relevant data."""
     # speaker: str = dspy.InputField(desc="The speaker id of the utterance")
     transcribed_text: str = dspy.InputField(desc="Recent transcribed text from the call")
-    citations: str = dspy.OutputField(desc="The relevant notes that the relevant information is based on. If no relevant information is found, say 'None'")
-    relevant_information: str = dspy.OutputField(desc="Relevant information from previous call notes. If no relevant information is found, say 'Waiting for more information'")
+    citations: str = dspy.OutputField(desc="The original relevant notes that the relevant information is based on. If no relevant information is found, say 'None'")
+    relevant_information: str = dspy.OutputField(desc="Concise and short summary of the relevant notes from previous calls. If no relevant information is found, say 'Waiting for more information'")
 
 
 class AssistantAgent(dspy.Module):
