@@ -1,0 +1,4 @@
+db_collection_name: <vector_db_collection_name>
+db_persist_path: <path_to_vector_db_persist_folder>
+azure_deployment_model: <azure_deployment_model_name>
+azure_embedding_model: <azure_embedding_model_name>

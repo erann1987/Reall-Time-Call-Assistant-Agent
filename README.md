@@ -1,6 +1,6 @@
 # Bank Call Assistant
 
-An AI-powered assistant that analyzes bank call conversations using DSPy and Azure OpenAI.
+An AI-powered assistant that analyzes bank call conversations in real-time using DSPy and Azure OpenAI.
 
 ## Features
 
@@ -14,30 +14,35 @@ An AI-powered assistant that analyzes bank call conversations using DSPy and Azu
 ## Setup
 
 1. Clone the repository:
-```bash
-git clone <your-repo-url>
-cd dspy-tutorial
-```
+    ```bash
+    git clone <your-repo-url>
+    cd dspy-tutorial
+    ```
 
 2. Create and activate a virtual environment:
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
+    ```bash
+    python -m venv venv
+    source venv/bin/activate  # On Windows: venv\Scripts\activate
+    ```
 
 3. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
+    ```bash
+    pip install -r requirements.txt
+    ```
 
 4. Copy the `.env-example` file to `.env` and fill in the Azure OpenAI credentials:
-```bash
-cp .env-example .env
-```
+    ```bash
+    cp .env-example .env
+    ```
+
+5. Copy the `config-example.yaml` file to `config.yaml` and fill in the Azure OpenAI models and vector database details:
+    ```bash
+    cp config.yaml.example config.yaml
+    ```
 
 ## Project Structure
 
-- `synthetic_calls.jsonl`: Synthetic call data generated from a call transcript
+- `synthetic_call_generation.jsonl`: Synthetic call data generated from a call transcript
 - `prepare_vector_db.py`: Vector database preparation
 - `app.py`: Main Streamlit application
 - `stt.py`: Speech-to-text conversion
@@ -48,7 +53,17 @@ cp .env-example .env
 
 ## Usage
 
-Run the Streamlit app:
-```bash
-streamlit run app.py
-```
+1. Run the vector database preparation script:
+    ```bash
+    python prepare_vector_db.py
+    ```
+
+2. [OPTIONAL] Run the synthetic call generation script to generate synthetic call audio file:
+    ```bash
+    python synthetic_call_generation.py
+    ```
+
+3. Run the Streamlit app:
+    ```bash
+    streamlit run app.py
+    ```

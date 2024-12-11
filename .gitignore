@@ -34,9 +34,11 @@ env/
 # Environment variables
 .env
 
+# config
+config.yaml
+
 # MLflow
 mlruns/
-bank_call_agent_db/
 synthetic_call_db
 
 # Logs

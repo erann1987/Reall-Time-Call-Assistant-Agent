@@ -12,9 +12,9 @@ with open('config.yaml', 'r') as file:
     config = yaml.safe_load(file)
 
 notes = [
-    "The client expressed interest in conservative investment options with a focus on long-term stability and low risk. Discussed the fixed deposit account as a potential option, highlighting its guaranteed return and minimal risk."
-    "Provided detailed information about the fixed deposit account, including the term options and the fixed interest rate. Emphasized the higher return compared to a regular savings account"
-    "Informed the client about the current interest rate for a five-year fixed deposit, which is 3.5% per annum. Highlighted the stability and predictability of the return."
+    "The client expressed interest in conservative investment options with a focus on long-term stability and low risk. Discussed the fixed deposit account as a potential option, highlighting its guaranteed return and minimal risk.",
+    "Provided detailed information about the fixed deposit account, including the term options and the fixed interest rate. Emphasized the higher return compared to a regular savings account",
+    "Informed the client about the current interest rate for a five-year fixed deposit, which is 3.5% per annum. Highlighted the stability and predictability of the return.",
     "During the call, the client inquired about the current mortgage rates and the process of applying for a home loan. Provided information on fixed and variable mortgage rates and the required documentation for the application.",
     "Expressed interest in applying for a new credit card. Discussed the benefits of different credit card options, including cashback and rewards programs. Assisted the client in completing the application process.",
     "Requested information on setting up a repayment plan for an existing personal loan. Explained the available options for restructuring the loan and the impact on monthly payments and interest rates.",
