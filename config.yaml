@@ -1,4 +1,6 @@
-db_collection_name: synthetic_call
-db_persist_path: ./synthetic_call_db
 azure_deployment_model: gpt-4o
 azure_embedding_model: text-embedding-3-large
+db_collection_name: synthetic_call
+db_persist_path: ./synthetic_call_db
+db_n_results: 3
+db_distance_threshold: 0.5

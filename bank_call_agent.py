@@ -39,8 +39,10 @@ def retrieve_notes(query: str) -> str:
 
     Returns:
         str: Relevant notes from the previous call with distance values."""
-    search_results = retriever(query, k=3)
-    return  "\n\n".join([f"{d['long_text']}\nDistance: {d['score']}" for i, d in enumerate(search_results)])
+    search_results = retriever(query, k=config.get('db_n_results', 3))
+    if config.get('db_distance_threshold', None) is not None:
+        search_results = [result for result in search_results if result['score'] < config.get('db_distance_threshold')]
+    return  "\n\n".join([f"{result['long_text']}\nDistance: {result['score']}" for result in search_results])
 
 def summarize_notes(relevant_notes: str) -> str:
     """Summarize relevant notes from the previous call.
@@ -63,7 +65,7 @@ class Assistant(dspy.Signature):
     """You are a ReACT (Reasoning and Action) agent designed to assist wealth management advisors during client calls by surfacing relevant notes from previous interactions. Your primary goal is to enhance the advisor's efficiency and provide timely, accurate information. Here are your instructions:
 
     Real-Time Transcription Input:
-    You will receive real-time transcribed text from the client-advisor call. This transcription will serve as the input for your reasoning and actions.
+    You will receive real-time transcribed text with the speaker id from the client-advisor call. This transcription will serve as the input for your reasoning and actions.
   
     Intent Recognition:
     Carefully analyze the transcribed text to detect the client's intent and identify key topics being discussed.

@@ -4,8 +4,7 @@ from pydub import AudioSegment
 from dotenv import load_dotenv
 load_dotenv()
 
-call_transcript = """
-Bank Advisor: Good afternoon, thank you for calling ABC Bank. My name is Alex. How can I assist you today?
+call_transcript = """Bank Advisor: Good afternoon, thank you for calling ABC Bank. My name is Alex. How can I assist you today?
 
 Customer: Hi Alex, I'm interested in learning about the bank's options for conservative investments. Can you help me with that?
 
@@ -39,12 +38,27 @@ Customer: Thank you, Alex. I appreciate your help. I'll consider my options and 
 
 Bank Advisor: You're welcome. If you have any other questions or need further assistance, please don't hesitate to contact us. Have a great day!
 
-Customer: You too! Goodbye.
-"""
+Customer: You too! Goodbye."""
+
+call_transcript_short = """Bank Advisor: Good afternoon, thank you for calling ABC Bank. How can I assist you today?
+
+Customer: Hi, I'm interested in conservative investments. Can you help?
+
+Bank Advisor: Of course! Are you looking for short-term or long-term options?
+
+Customer: Long-term with lower risk.
+
+Bank Advisor: We have several options, including our fixed deposit account with a guaranteed return and minimal risk.
+
+Customer: Thank you, I'll consider my options.
+
+Bank Advisor: You're welcome. Have a great day!
+
+Customer: You too! Goodbye."""
 
 advisor_utterances = [] 
 customer_utterances = []
-for utterance in call_transcript.split('\n'):
+for utterance in call_transcript_short.split('\n'):
     if utterance.startswith('Bank Advisor:'):
         advisor_utterances.append(utterance.replace('Bank Advisor:', '').strip())
     elif utterance.startswith('Customer:'):
@@ -108,5 +122,5 @@ for advisor_segment, customer_segment in zip(advisor_segments, customer_segments
     combined_audio += customer_segment
 
 # Export the combined audio
-combined_audio.export("synthetic_call.wav", format="wav")
+combined_audio.export("synthetic_call_short.wav", format="wav")
 
