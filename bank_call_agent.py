@@ -101,51 +101,49 @@ class AssistantAgent(dspy.Module):
         )
     def forward(self, transcribed_text: str) -> str:
         return self.agent(transcribed_text=transcribed_text)
-
-
-# Custom callback for displaying thoughts and actions
-# class AgentLoggingCallback(BaseCallback):
-#     def __init__(self):
-#         super().__init__()
-#         pass
     
-#     def on_module_start(self, call_id, instance, inputs):
-#         # Clear previous display
-#         print("**💭 Thinking:**")
-#         pass
-#     def on_module_end(self, call_id, outputs, exception):
-#         # Update the display with current step
-#         if "next_thought" in outputs:
-#             print(f"**💭 Thinking:** {outputs['next_thought']}")
+
+
+# for testing
+if __name__ == "__main__":
+    class AgentLoggingCallback(BaseCallback):
+        def __init__(self):
+            super().__init__()
         
-#         if "next_tool_name" in outputs:
-#             if outputs["next_tool_name"].lower() == "finish":
-#                 print("**✅ Finish**")
-#             else:
-#                 args_str = json.dumps(outputs.get("next_tool_args", {}), indent=2)
-#                 print(f"**🔧 Using Tool:** calling `{outputs['next_tool_name']}` with `{args_str}`")
+        def on_module_end(self, call_id, outputs, exception):
+            # Update the display with current step
+            if "next_thought" in outputs:
+                print(f"💭 Thinking: {outputs['next_thought']}")
+            
+            if "next_tool_name" in outputs:
+                if outputs["next_tool_name"].lower() == "finish":
+                    print("✅ Finish")
+                else:
+                    args_str = json.dumps(outputs.get("next_tool_args", {}), indent=2)
+                    print(f"🔧 Using Tool: `{outputs['next_tool_name']}` with `{args_str}`")
 
 
-# # Configure LM
-# lm = dspy.LM(
-#     model=f"azure/{config.get('azure_deployment_model')}",
-#     api_key=os.getenv('AZURE_OPENAI_API_KEY'),
-#     api_base=os.getenv('AZURE_OPENAI_API_BASE'),
-#     api_version=os.getenv('AZURE_OPENAI_API_VERSION'),
-#     cache=False
-# )
-# dspy.configure(lm=lm, callbacks=[AgentLoggingCallback()])
+    # Configure LM
+    lm = dspy.LM(
+        model=f"azure/{config.get('azure_deployment_model')}",
+        api_key=os.getenv('AZURE_OPENAI_API_KEY'),
+        api_base=os.getenv('AZURE_OPENAI_API_BASE'),
+        api_version=os.getenv('AZURE_OPENAI_API_VERSION'),
+        cache=False
+    )
+    dspy.configure(lm=lm, callbacks=[AgentLoggingCallback()])
 
-# mlflow.dspy.autolog()
-# mlflow.set_experiment("Agent Assistant Bank Call")
+    mlflow.dspy.autolog()
+    mlflow.set_experiment("Agent Assistant Bank Call")
 
-# agent = AssistantAgent()
+    agent = AssistantAgent()
 
-# utterance1 = "Hallo, ich möchte etwas Geld investieren, aber ich möchte etwas mit geringem Risiko. Können Sie mir mehr über die Möglichkeiten erzählen, die Sie haben, wie z.B. Kautionen oder ähnliches?"
-# utterance2 = "Hallo Herr Jonson, guten Morgen, wie geht es Ihnen?"
+    utterance1 = "Bank Advisor: Good afternoon, thank you for calling ABC Bank. How can I assist you today?"
+    prediction = agent(transcribed_text=utterance1)
+    print(prediction)
 
-# prediction = agent(transcribed_text=utterance1)
+    utterance2 = "Customer: Hi, I'm interested in conservative investments. Can you help?"
+    prediction = agent(transcribed_text=utterance2)
+    print(prediction)
 
-# print(prediction)
-
-# print(dspy.inspect_history(n=10))
+    print(dspy.inspect_history(n=10))
