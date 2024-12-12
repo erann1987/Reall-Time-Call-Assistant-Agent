@@ -30,14 +30,14 @@ class AgentLoggingCallback(BaseCallback):
         # Update the display with current step
         with st.session_state.thought_container.container():
             if "next_thought" in outputs:
-                st.info(f"💭 Thinking: {outputs['next_thought']}")
+                st.markdown(f"**💭 Thinking:** {outputs['next_thought']}")
             
             if "next_tool_name" in outputs:
                 if outputs["next_tool_name"].lower() == "finish":
-                    st.info("✅ Finish")
+                    st.markdown("**✅ Finish**")
                 else:
                     args_str = json.dumps(outputs.get("next_tool_args", {}), indent=2)
-                    st.info(f"🔧 Using Tool: `{outputs['next_tool_name']}` with `{args_str}`")
+                    st.markdown(f"**🔧 Using Tool:** `{outputs['next_tool_name']}` with `{args_str}`")
 
 def dspy_configure():
     lm = dspy.LM(
