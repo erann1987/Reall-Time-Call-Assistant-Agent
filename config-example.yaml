@@ -3,4 +3,4 @@ azure_embedding_model: <azure_embedding_model_name>
 db_collection_name: <vector_db_collection_name>
 db_persist_path: <path_to_vector_db_persist_folder>
 db_n_results: <number_of_results_to_retrieve>
-db_distance_threshold: <distance_threshold_for_retrieving_results>
+call_transcription_generation_topic: <topic_for_call_transcription_generation>

@@ -1,5 +1,5 @@
 import streamlit as st
-from bank_call_agent import Assistant, retrieve_notes
+from bank_call_agent import AssistantAgent
 import dspy
 import mlflow
 import subprocess
@@ -102,7 +102,7 @@ def transcriber_callback(transcription):
     elif transcription['type'] == 'final':
         def run_agent(text, timestamp):
             dspy_configure()
-            agent = dspy.ReAct(signature=Assistant, tools=[retrieve_notes])
+            agent = AssistantAgent(similarity_threshold=similarity_threshold)
             mlflow.dspy.autolog()
             mlflow.set_experiment("Agent Assistant Bank Call - From Audio")
             prediction = agent(transcribed_text=text)
@@ -176,7 +176,7 @@ else:
     transcribed_text = st.text_area("📝 Enter or paste text:", height=150)
 
 
-# Create the submit button
+similarity_threshold = st.slider("Similarity Threshold", min_value=0.0, max_value=2.0, value=1.0, step=0.1)
 if st.button("🤖 Analyze"):
     st.session_state.analysis_complete_container = st.empty()
     with st.spinner("🤖 Analyzing..."):
@@ -186,7 +186,7 @@ if st.button("🤖 Analyze"):
 
         if input_method == "Write or paste text" and transcribed_text:
             dspy_configure()
-            agent = dspy.ReAct(signature=Assistant, tools=[retrieve_notes])
+            agent = AssistantAgent(similarity_threshold=similarity_threshold)
             mlflow.dspy.autolog()
             mlflow.set_experiment("Agent Assistant Bank Call - From Text")
             prediction = agent(transcribed_text=transcribed_text)

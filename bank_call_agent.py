@@ -31,18 +31,6 @@ retriever = ChromadbRM(
     client=chroma_client
 )
 
-def retrieve_notes(query: str) -> str:
-    """Retrieve relevant notes from the previous call.
-
-    Args:
-        query (str): The query to search for in the notes.
-
-    Returns:
-        str: Relevant notes from the previous call with distance values."""
-    search_results = retriever(query, k=config.get('db_n_results', 3))
-    if config.get('db_distance_threshold', None) is not None:
-        search_results = [result for result in search_results if result['score'] < config.get('db_distance_threshold')]
-    return  "\n\n".join([f"{result['long_text']}\nDistance: {result['score']}" for result in search_results])
 
 class Assistant(dspy.Signature):
     """You are a ReACT (Reasoning and Action) agent designed to assist wealth management advisors during client calls by surfacing relevant notes from previous interactions. Your primary goal is to enhance the advisor's efficiency and provide timely, accurate information. Here are your instructions:
@@ -75,7 +63,31 @@ class Assistant(dspy.Signature):
     citations: str = dspy.OutputField(desc="The original relevant notes that the relevant information is based on. If no relevant information is found, say 'None'")
     relevant_information: str = dspy.OutputField(desc="Concise and short summary of the relevant notes from previous calls. If no relevant information is found, say 'Waiting for more information'")
 
+
+
+class AssistantAgent(dspy.Module):
+    def __init__(self, similarity_threshold: float = 1.0):
+        self.similarity_threshold = similarity_threshold
+        self.agent = dspy.ReAct(
+            signature=Assistant,
+            tools=[self.retrieve_notes]
+        )
+    def forward(self, transcribed_text: str) -> str:
+        return self.agent(transcribed_text=transcribed_text)
     
+    def retrieve_notes(self, query: str) -> str:
+        """Retrieve relevant notes from the previous call.
+
+        Args:
+            query (str): The query to search for in the notes.
+
+        Returns:
+            str: Relevant notes from the previous call with distance values."""
+        search_results = retriever(query, k=config.get('db_n_results', 3))
+        search_results = [result for result in search_results if result['score'] <= self.similarity_threshold]
+        return  "\n\n".join([f"{result['long_text']}\nDistance: {result['score']}" for result in search_results])
+    
+
 # for testing
 if __name__ == "__main__":
     class AgentLoggingCallback(BaseCallback):
@@ -108,7 +120,7 @@ if __name__ == "__main__":
     mlflow.dspy.autolog()
     mlflow.set_experiment("Agent Assistant Bank Call")
 
-    agent = dspy.ReAct(signature=Assistant, tools=[retrieve_notes])
+    agent = AssistantAgent(similarity_threshold=1.0)
 
     utterance1 = "Bank Advisor: Good afternoon, thank you for calling ABC Bank. How can I assist you today?"
     prediction = agent(transcribed_text=utterance1)
