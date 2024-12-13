@@ -1,5 +1,5 @@
 import streamlit as st
-from bank_call_agent import AssistantAgent
+from bank_call_agent import Assistant, retrieve_notes
 import dspy
 import mlflow
 import subprocess
@@ -143,7 +143,7 @@ def transcriber_callback(transcription):
     elif transcription['type'] == 'final':
         def run_agent(text, timestamp):
             dspy_configure()
-            agent = AssistantAgent()
+            agent = dspy.ReAct(signature=Assistant, tools=[retrieve_notes])
             mlflow.dspy.autolog()
             mlflow.set_experiment("Agent Assistant Bank Call - From Audio")
             prediction = agent(transcribed_text=text)
@@ -181,7 +181,7 @@ if st.button("🤖 Analyze"):
 
     if input_method == "Write or paste text" and transcribed_text:
         dspy_configure()
-        agent = AssistantAgent()
+        agent = dspy.ReAct(signature=Assistant, tools=[retrieve_notes])
         mlflow.dspy.autolog()
         mlflow.set_experiment("Agent Assistant Bank Call - From Text")
         prediction = agent(transcribed_text=transcribed_text)

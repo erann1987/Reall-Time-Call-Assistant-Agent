@@ -44,23 +44,6 @@ def retrieve_notes(query: str) -> str:
         search_results = [result for result in search_results if result['score'] < config.get('db_distance_threshold')]
     return  "\n\n".join([f"{result['long_text']}\nDistance: {result['score']}" for result in search_results])
 
-def summarize_notes(relevant_notes: str) -> str:
-    """Summarize relevant notes from the previous call.
-    Provide a bullet point summary of the relevant notes retrieved from the call.
-    Input:
-        relevant_notes (str): Relevant notes from the previous call with low distance values.
-    Output:
-        str: A bullet points summary in English of the relevant notes retrieved from the call."""
-    notes_summary_module = dspy.ChainOfThought(signature=NotesSummary)
-    notes_summary = notes_summary_module(relevant_notes = relevant_notes)
-    return notes_summary.summary
-
-class NotesSummary(dspy.Signature):
-    """Summarize relevant notes from the previous call.
-    Provide a bullet point summary of the relevant notes retrieved from the call."""
-    relevant_notes: str = dspy.InputField(desc="Relevant notes from the previous call with low distance values")
-    summary: str = dspy.OutputField(desc="A bullet points summary in English of the relevant notes retrieved from the call")
-
 class Assistant(dspy.Signature):
     """You are a ReACT (Reasoning and Action) agent designed to assist wealth management advisors during client calls by surfacing relevant notes from previous interactions. Your primary goal is to enhance the advisor's efficiency and provide timely, accurate information. Here are your instructions:
 
@@ -92,18 +75,7 @@ class Assistant(dspy.Signature):
     citations: str = dspy.OutputField(desc="The original relevant notes that the relevant information is based on. If no relevant information is found, say 'None'")
     relevant_information: str = dspy.OutputField(desc="Concise and short summary of the relevant notes from previous calls. If no relevant information is found, say 'Waiting for more information'")
 
-
-class AssistantAgent(dspy.Module):
-    def __init__(self):
-        self.agent = dspy.ReAct(
-            signature=Assistant,
-            tools=[retrieve_notes]
-        )
-    def forward(self, transcribed_text: str) -> str:
-        return self.agent(transcribed_text=transcribed_text)
     
-
-
 # for testing
 if __name__ == "__main__":
     class AgentLoggingCallback(BaseCallback):
@@ -136,7 +108,7 @@ if __name__ == "__main__":
     mlflow.dspy.autolog()
     mlflow.set_experiment("Agent Assistant Bank Call")
 
-    agent = AssistantAgent()
+    agent = dspy.ReAct(signature=Assistant, tools=[retrieve_notes])
 
     utterance1 = "Bank Advisor: Good afternoon, thank you for calling ABC Bank. How can I assist you today?"
     prediction = agent(transcribed_text=utterance1)
