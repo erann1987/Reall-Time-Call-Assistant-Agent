@@ -65,7 +65,8 @@ try:
     )
 except:
     collection = chroma_client.create_collection(
-        config.get('db_collection_name'), 
+        config.get('db_collection_name'),
+        metadata={"hnsw:space": "cosine"},
         embedding_function=ef
     )
     collection.add(
