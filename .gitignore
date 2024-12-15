@@ -49,3 +49,6 @@ synthetic_call_db
 # Audio files
 *.wav
 *.mp3
+
+# synthetic data
+synthetic_data/
