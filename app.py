@@ -58,16 +58,10 @@ def launch_mlflow():
             time.sleep(2)
             webbrowser.open('http://127.0.0.1:5001', new=2)
         
-        mlflow.log_params({
-            "similarity_threshold": similarity_threshold,
-            "n_results": n_results,
-            "model_deployment_name": model_deployment_name,
-            "temperature": temperature
-        })
-        mlflow.end_run()
         thread = threading.Thread(target=run_mlflow)
         thread.start()
         st.session_state.mlflow_launched = True
+        display_results()
 
 def display_results():
     st.session_state.results_placeholder.empty()
@@ -118,13 +112,11 @@ def transcriber_callback(transcription):
                 cache=False,
             )
             dspy.configure(lm=lm, callbacks=[AgentLoggingCallback()])
-
-            agent = AssistantAgent(similarity_threshold=similarity_threshold, results_from_search=n_results)
             mlflow.dspy.autolog()
-            mlflow.set_experiment("Agent Analysis")
+            agent = AssistantAgent(similarity_threshold=similarity_threshold, results_from_search=n_results)
             prediction = agent(transcribed_text=text)
             st.session_state.agent_cost += lm.history[-1]['cost']
-            mlflow.log_metric("cost", st.session_state.agent_cost)
+            # mlflow.log_metric("cost", st.session_state.agent_cost)
             print(st.session_state.agent_cost)
             
             if prediction.relevant_information != "Waiting for more information":
@@ -215,12 +207,6 @@ with st.expander("Configuration", expanded=True, icon="⚙️"):
         temperature = st.slider("Temperature", min_value=0.0, max_value=1.0, value=0.0, step=0.01)
 
 
-if not st.session_state.mlflow_experiment_started:
-    print("starting mlflow experiment")
-    mlflow.dspy.autolog()
-    mlflow.set_experiment("Agent Analysis")
-    st.session_state.mlflow_experiment_started = True
-
 if st.button("🤖 Analyze"):
     st.session_state.analysis_complete_container = st.empty()
     with st.spinner("🤖 Analyzing..."):
@@ -231,6 +217,17 @@ if st.button("🤖 Analyze"):
         if input_method == "Write or paste text" and transcribed_text:
             dspy_configure(model_deployment_name, temperature)
             agent = AssistantAgent(similarity_threshold=similarity_threshold, results_from_search=n_results)
+            if not st.session_state.mlflow_experiment_started:
+                print("starting mlflow experiment")
+                mlflow.dspy.autolog()
+                mlflow.set_experiment("Agent Analysis")
+                st.session_state.mlflow_experiment_started = True
+                mlflow.log_params({
+                    "similarity_threshold": similarity_threshold,
+                    "n_results": n_results,
+                    "model_deployment_name": model_deployment_name,
+                    "temperature": temperature
+                })
             prediction = agent(transcribed_text=transcribed_text)
             st.session_state.agent_cost += st.session_state.lm.history[-1]['cost']
             
@@ -247,9 +244,20 @@ if st.button("🤖 Analyze"):
 
         elif input_method == "Upload audio file" and uploaded_file:
             transcription_manager.set_consumer_callback(transcriber_callback)
+            print("starting mlflow experiment")
+            mlflow.set_experiment("Agent Analysis")
+            mlflow.log_params({
+                "similarity_threshold": similarity_threshold,
+                "n_results": n_results,
+                "model_deployment_name": model_deployment_name,
+                "temperature": temperature
+            })
             recognize_from_file("temp_audio.wav")
             for thread in agent_threads:
                 thread.join()
+            mlflow.log_metric("cost", st.session_state.agent_cost)
+            mlflow.end_run()
+
             st.session_state.analysis_complete = True
             with st.session_state.analysis_complete_container:
                 st.success("✨ Analysis complete!")
