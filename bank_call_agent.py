@@ -66,7 +66,8 @@ class Assistant(dspy.Signature):
 
 
 class AssistantAgent(dspy.Module):
-    def __init__(self, similarity_threshold: float = 1.0):
+    def __init__(self, results_from_search: int = 3, similarity_threshold: float = 1.0):
+        self.results_from_search = results_from_search
         self.similarity_threshold = similarity_threshold
         self.agent = dspy.ReAct(
             signature=Assistant,
@@ -83,7 +84,7 @@ class AssistantAgent(dspy.Module):
 
         Returns:
             str: Relevant notes from the previous call with distance values."""
-        search_results = retriever(query, k=config.get('db_n_results', 3))
+        search_results = retriever(query, k=self.results_from_search)
         search_results = [result for result in search_results if result['score'] <= self.similarity_threshold]
         return  "\n\n".join([f"{result['long_text']}\nDistance: {result['score']}" for result in search_results])
     
@@ -131,3 +132,8 @@ if __name__ == "__main__":
     print(prediction)
 
     print(dspy.inspect_history(n=10))
+    cost = sum([token['cost'] for token in lm.history])
+    mlflow.log_metric("cost", cost)
+    print(lm.history)
+    print(lm.history.keys())
+    

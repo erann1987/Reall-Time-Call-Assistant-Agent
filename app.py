@@ -40,15 +40,16 @@ class AgentLoggingCallback(BaseCallback):
                         `{outputs['next_tool_name']}` args: `{args_str}`"""
                     )
 
-def dspy_configure():
-    lm = dspy.LM(
-        model=f"azure/{config.get('azure_deployment_model')}",
+def dspy_configure(model_deployment_name, temperature=0.0):
+    st.session_state.lm = dspy.LM(
+        model=f"azure/{model_deployment_name}",
         api_key=os.getenv('AZURE_OPENAI_API_KEY'),
         api_base=os.getenv('AZURE_OPENAI_API_BASE'),
         api_version=os.getenv('AZURE_OPENAI_API_VERSION'),
-        cache=False
+        temperature=temperature,
+        cache=False,
     )
-    dspy.configure(lm=lm, callbacks=[AgentLoggingCallback()])
+    dspy.configure(lm=st.session_state.lm, callbacks=[AgentLoggingCallback()])
 
 def launch_mlflow():
     if not st.session_state.mlflow_launched:
@@ -57,6 +58,13 @@ def launch_mlflow():
             time.sleep(2)
             webbrowser.open('http://127.0.0.1:5001', new=2)
         
+        mlflow.log_params({
+            "similarity_threshold": similarity_threshold,
+            "n_results": n_results,
+            "model_deployment_name": model_deployment_name,
+            "temperature": temperature
+        })
+        mlflow.end_run()
         thread = threading.Thread(target=run_mlflow)
         thread.start()
         st.session_state.mlflow_launched = True
@@ -101,11 +109,23 @@ def transcriber_callback(transcription):
     
     elif transcription['type'] == 'final':
         def run_agent(text, timestamp):
-            dspy_configure()
-            agent = AssistantAgent(similarity_threshold=similarity_threshold)
+            lm = dspy.LM(
+                model=f"azure/{model_deployment_name}",
+                api_key=os.getenv('AZURE_OPENAI_API_KEY'),
+                api_base=os.getenv('AZURE_OPENAI_API_BASE'),
+                api_version=os.getenv('AZURE_OPENAI_API_VERSION'),
+                temperature=temperature,
+                cache=False,
+            )
+            dspy.configure(lm=lm, callbacks=[AgentLoggingCallback()])
+
+            agent = AssistantAgent(similarity_threshold=similarity_threshold, results_from_search=n_results)
             mlflow.dspy.autolog()
-            mlflow.set_experiment("Agent Assistant Bank Call - From Audio")
+            mlflow.set_experiment("Agent Analysis")
             prediction = agent(transcribed_text=text)
+            st.session_state.agent_cost += lm.history[-1]['cost']
+            mlflow.log_metric("cost", st.session_state.agent_cost)
+            print(st.session_state.agent_cost)
             
             if prediction.relevant_information != "Waiting for more information":
                 print(f"got relevant information")
@@ -146,6 +166,12 @@ if 'thought_container' not in st.session_state:
     st.session_state.thought_container = st.empty()
 if 'results_placeholder' not in st.session_state:
     st.session_state.results_placeholder = st.empty()
+if 'agent_cost' not in st.session_state:
+    st.session_state.agent_cost = 0
+if 'lm' not in st.session_state:
+    st.session_state.lm = None
+if 'mlflow_experiment_started' not in st.session_state:
+    st.session_state.mlflow_experiment_started = False
 
 with open('config.yaml', 'r') as file:
     config = yaml.safe_load(file)
@@ -176,7 +202,25 @@ else:
     transcribed_text = st.text_area("📝 Enter or paste text:", height=150)
 
 
-similarity_threshold = st.slider("Similarity Threshold", min_value=0.0, max_value=2.0, value=1.0, step=0.1)
+with st.expander("Configuration", expanded=True, icon="⚙️"):
+    col1, col2 = st.columns(2)
+    with col1:
+        n_results = st.number_input("Results retrieved from search", min_value=1, max_value=10, value=3, step=1)
+    with col2:
+        similarity_threshold = st.slider("Similarity Threshold", min_value=0.0, max_value=2.0, value=1.0, step=0.1)
+    col1, col2 = st.columns(2)
+    with col1:
+        model_deployment_name = st.text_input("Model Deployment Name", value="gpt-4o")
+    with col2:
+        temperature = st.slider("Temperature", min_value=0.0, max_value=1.0, value=0.0, step=0.01)
+
+
+if not st.session_state.mlflow_experiment_started:
+    print("starting mlflow experiment")
+    mlflow.dspy.autolog()
+    mlflow.set_experiment("Agent Analysis")
+    st.session_state.mlflow_experiment_started = True
+
 if st.button("🤖 Analyze"):
     st.session_state.analysis_complete_container = st.empty()
     with st.spinner("🤖 Analyzing..."):
@@ -185,11 +229,10 @@ if st.button("🤖 Analyze"):
         st.session_state.results_placeholder = st.empty()
 
         if input_method == "Write or paste text" and transcribed_text:
-            dspy_configure()
-            agent = AssistantAgent(similarity_threshold=similarity_threshold)
-            mlflow.dspy.autolog()
-            mlflow.set_experiment("Agent Assistant Bank Call - From Text")
+            dspy_configure(model_deployment_name, temperature)
+            agent = AssistantAgent(similarity_threshold=similarity_threshold, results_from_search=n_results)
             prediction = agent(transcribed_text=transcribed_text)
+            st.session_state.agent_cost += st.session_state.lm.history[-1]['cost']
             
             # Add and display the result immediately
             st.session_state.results_list.append({
