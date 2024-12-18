@@ -39,7 +39,7 @@ class Assistant(dspy.Signature):
     You will receive real-time transcribed text with the speaker id from the client-advisor call. This transcription will serve as the input for your reasoning and actions.
     
     Speaker Identification:
-    You should reason about the speaker of the transcribed text. If the speaker is the client, you should continue with the following steps. If the speaker is the advisor, you should finish.
+    You should reason about the speaker of the transcribed text. Only take into account utterances from the client.
     
     Intent Recognition:
     Carefully analyze the transcribed text to detect the client's intent and identify key topics being discussed.
@@ -101,7 +101,7 @@ class AssistantAgent(dspy.Module):
         """Retrieve information about a stock.
 
         Args:
-            stock_symbol (Literal['AAPL', 'GOOGL', 'MSFT', 'AMZN', 'TSLA']): The symbol of the stock to search for.
+            stock_symbol (Literal['AAPL', 'GOOGL', 'MSFT', 'AMZN', 'TSLA', 'None specified']): The symbol of the stock to search for.
 
         Returns:
             str: Information about the stock."""
@@ -112,6 +112,7 @@ class AssistantAgent(dspy.Module):
             "MSFT": "Hold - Stable performance with moderate growth prospects.",
             "AMZN": "Buy - Expanding market presence and innovative strategies.",
             "TSLA": "Sell - High volatility and uncertain future outlook.",
+            "None specified": "Wait for specific stock information request."
         }
         return stocks_info.get(stock_symbol, "No information available for this stock.")
 

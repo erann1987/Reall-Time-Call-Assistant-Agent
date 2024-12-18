@@ -69,16 +69,16 @@ def display_results():
         st.session_state.results_list.sort(key=lambda x: x['timestamp'], reverse=True)
         for i, result in enumerate(st.session_state.results_list):
             st.subheader(f"ℹ️ Relevant Information {len(st.session_state.results_list) - i}")
-            st.write(result['prediction'].relevant_information)
+            st.text(result['prediction'].relevant_information)
             
             st.subheader("📚 References")
-            st.write(result['prediction'].citations)
+            st.text(result['prediction'].citations)
             
             with st.expander("💬 View Agent Input", expanded=False):
-                st.write(result['input_text'])
+                st.text(result['input_text'])
 
             with st.expander("💭 View Reasoning", expanded=False):
-                st.write(result['prediction'].reasoning)
+                st.text(result['prediction'].reasoning)
             
             with st.expander("🔍 View Trajectory", expanded=False):
                 st.write(result['prediction'].trajectory)
@@ -116,11 +116,10 @@ def transcriber_callback(transcription):
             agent = AssistantAgent(similarity_threshold=similarity_threshold, results_from_search=n_results)
             prediction = agent(transcribed_text=text)
             st.session_state.agent_cost += lm.history[-1]['cost']
-            # mlflow.log_metric("cost", st.session_state.agent_cost)
-            print(st.session_state.agent_cost)
+            print(f"total agent cost: {st.session_state.agent_cost}")
             
             if prediction.relevant_information != "Waiting for more information":
-                print(f"got relevant information")
+                print(f"Found relevant information")
                 st.session_state.results_list.append({
                     'prediction': prediction,
                     'input_text': text,
@@ -129,19 +128,26 @@ def transcriber_callback(transcription):
                 display_results()
 
         # Concatenate final transcription and update display
-        new_final = f"Speaker {transcription['speaker_id']}: {transcription['text']}\n"
-        st.session_state.final_transcription += f"\n{new_final}"
+        final_utterance = f"Speaker {transcription['speaker_id']}: {transcription['text']}"
+        st.session_state.final_transcription += f"\n{final_utterance}\n"
         st.session_state.live_transcription = ""  # Clear interim transcription
         
         print(f"got utterance: {transcription['text']}")
-        text = f"Speaker {transcription['speaker_id']}: {transcription['text']}"
-        thread = threading.Thread(
-            target=run_agent, 
-            args=(text, datetime.now(),)
-        )
-        add_script_run_ctx(thread)
-        thread.start()
-        agent_threads.append(thread)
+
+        st.session_state.utterance_buffer.append(final_utterance)
+        if len(st.session_state.utterance_buffer) >= transcription_buffer_size:
+            text = "\n".join(st.session_state.utterance_buffer[-transcription_buffer_size:])
+            st.session_state.utterance_buffer = st.session_state.utterance_buffer[-transcription_buffer_overlap:]
+
+            print(f"running agent with text: {text}")
+        
+            thread = threading.Thread(
+                target=run_agent, 
+                args=(text, datetime.now(),)
+            )
+            add_script_run_ctx(thread)
+            thread.start()
+            agent_threads.append(thread)
 
 # Initialize session states
 if 'live_transcription' not in st.session_state:
@@ -164,6 +170,8 @@ if 'lm' not in st.session_state:
     st.session_state.lm = None
 if 'mlflow_experiment_started' not in st.session_state:
     st.session_state.mlflow_experiment_started = False
+if 'utterance_buffer' not in st.session_state:
+    st.session_state.utterance_buffer = []
 
 with open('config.yaml', 'r') as file:
     config = yaml.safe_load(file)
@@ -205,6 +213,11 @@ with st.expander("Configuration", expanded=True, icon="⚙️"):
         model_deployment_name = st.text_input("Model Deployment Name", value="gpt-4o")
     with col2:
         temperature = st.slider("Temperature", min_value=0.0, max_value=1.0, value=0.0, step=0.01)
+    col1, col2 = st.columns(2)
+    with col1:
+        transcription_buffer_size = st.number_input("Transcription Buffer Size", min_value=1, max_value=10, value=4, step=1)
+    with col2:
+        transcription_buffer_overlap = st.number_input("Transcription Buffer Overlap", min_value=0, max_value=10, value=2, step=1)
 
 
 if st.button("🤖 Analyze"):
