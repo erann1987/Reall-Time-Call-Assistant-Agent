@@ -33,35 +33,41 @@ retriever = ChromadbRM(
 
 
 class Assistant(dspy.Signature):
-    """You are a ReACT (Reasoning and Action) agent designed to assist wealth management advisors during client calls by surfacing relevant notes from previous interactions. Your primary goal is to enhance the advisor's efficiency and provide timely, accurate information. Here are your instructions:
+    """You are a ReACT (Reasoning and Action) agent designed to assist wealth management advisors during client calls by surfacing relevant information. Your primary goal is to enhance the advisor's efficiency and provide timely, accurate information. Here are your instructions:
 
     Real-Time Transcription Input:
     You will receive real-time transcribed text with the speaker id from the client-advisor call. This transcription will serve as the input for your reasoning and actions.
-  
+    
+    Speaker Identification:
+    You should reason about the speaker of the transcribed text. If the speaker is the client, you should continue with the following steps. If the speaker is the advisor, you should finish.
+    
     Intent Recognition:
     Carefully analyze the transcribed text to detect the client's intent and identify key topics being discussed.
-    Do not proceed with searching unless you have high confidence in understanding the client's specific intent.
+    Do not proceed unless you have high confidence in understanding the client's specific intent.
     If the intent is ambiguous or unclear, continue listening and wait for more context.
 
     Note Retrieval:
-    Only when you have clearly identified a specific client intent, proceed with:
+    When you have clearly identified a specific client intent, you should retrieve relevant notes from the previous call:
     - Generating a focused query vector based on the confirmed intent and context
     - Searching the vector database for relevant notes from previous interactions
     If there is any uncertainty about the intent, wait for more transcribed text rather than performing premature searches.
+
+    Tool Utilization:
+    Use any of the provided tools to achieve the goal of surfacing relevant information. Select the most appropriate tool based on the identified intent and context.
     
-    Display Notes:
-    Once relevant notes are found based on a clear intent:
+    Display Relevant Information:
+    Once relevant information is found based on a clear intent:
     - Dynamically display them to the advisor in real-time
     - Ensure they are clearly organized and directly related to the identified intent
     - Highlight the most relevant parts to help the advisor quickly grasp important information
-    Output language: English
 
     Citations:
-    Include citations for the information you provide, indicating the sources of the retrieved notes and any other relevant data."""
-    # speaker: str = dspy.InputField(desc="The speaker id of the utterance")
+    Include citations for the information you provide, indicating the sources of the generated information.
+    
+    Do not provide any recommendations or advice. Only provide information."""
     transcribed_text: str = dspy.InputField(desc="Recent transcribed text from the call")
-    citations: str = dspy.OutputField(desc="The original relevant notes that the relevant information is based on. If no relevant information is found, say 'None'")
-    relevant_information: str = dspy.OutputField(desc="Concise and short summary of the relevant notes from previous calls. If no relevant information is found, say 'Waiting for more information'")
+    citations: str = dspy.OutputField(desc="The original observations used to generate the relevant information. If no relevant information is found, say 'None'")
+    relevant_information: str = dspy.OutputField(desc="Concise and short summary of the relevant information. If no relevant information is found, say 'Waiting for more information'")
 
 
 
@@ -71,13 +77,14 @@ class AssistantAgent(dspy.Module):
         self.similarity_threshold = similarity_threshold
         self.agent = dspy.ReAct(
             signature=Assistant,
-            tools=[self.retrieve_notes]
+            tools=[self.retrieve_notes, self.stocks_info]
         )
     def forward(self, transcribed_text: str) -> str:
         return self.agent(transcribed_text=transcribed_text)
     
-    def retrieve_notes(self, query: str) -> str:
+    def retrieve_notes(self, query: str) -> str | None:
         """Retrieve relevant notes from the previous call.
+        Should always be used when you have a clear intent.
 
         Args:
             query (str): The query to search for in the notes.
@@ -86,8 +93,27 @@ class AssistantAgent(dspy.Module):
             str: Relevant notes from the previous call with distance values."""
         search_results = retriever(query, k=self.results_from_search)
         search_results = [result for result in search_results if result['score'] <= self.similarity_threshold]
+        if len(search_results) == 0:
+            return None
         return  "\n\n".join([f"{result['long_text']}\nDistance: {result['score']}" for result in search_results])
     
+    def stocks_info(self, stock_symbol: str) -> str:
+        """Retrieve information about a stock.
+
+        Args:
+            stock_symbol (Literal['AAPL', 'GOOGL', 'MSFT', 'AMZN', 'TSLA']): The symbol of the stock to search for.
+
+        Returns:
+            str: Information about the stock."""
+        
+        stocks_info = {
+            "AAPL": "Buy - Strong financial performance and growth potential.",
+            "GOOGL": "Sell - Recent regulatory challenges and market competition.",
+            "MSFT": "Hold - Stable performance with moderate growth prospects.",
+            "AMZN": "Buy - Expanding market presence and innovative strategies.",
+            "TSLA": "Sell - High volatility and uncertain future outlook.",
+        }
+        return stocks_info.get(stock_symbol, "No information available for this stock.")
 
 # for testing
 if __name__ == "__main__":

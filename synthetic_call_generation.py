@@ -50,6 +50,14 @@ Customer: Long-term with lower risk.
 
 Bank Advisor: We have several options, including our fixed deposit account with a guaranteed return and minimal risk.
 
+Customer: I'm also interested in stocks.
+
+Bank Advisor: Sure, we can discuss some conservative stocks. Are there any particular stocks you are interested in?
+
+Customer: Yes, I'm interested in information about apple and microsoft.
+
+Bank Advisor: Sure, I can provide you with information about apple and microsoft.
+
 Customer: Thank you, I'll consider my options.
 
 Bank Advisor: You're welcome. Have a great day!
@@ -122,5 +130,5 @@ for advisor_segment, customer_segment in zip(advisor_segments, customer_segments
     combined_audio += customer_segment
 
 # Export the combined audio
-combined_audio.export("synthetic_call_short.wav", format="wav")
+combined_audio.export("synthetic_call_with_stocks.wav", format="wav")
 
