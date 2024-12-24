@@ -42,7 +42,7 @@ An AI-powered assistant that analyzes bank call conversations in real-time using
 
 ## Project Structure
 
-- `synthetic_call_transcription.py`: Synthetic call data generated from a call transcript
+- `synthetic_call_transcription.py`: Synthetic call data generation and transcription
 - `prepare_vector_db.py`: Vector database preparation
 - `app.py`: Main Streamlit application
 - `stt.py`: Speech-to-text conversion
