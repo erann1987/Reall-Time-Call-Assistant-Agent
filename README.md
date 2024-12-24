@@ -40,6 +40,16 @@ An AI-powered assistant that analyzes bank call conversations in real-time using
     cp config.yaml.example config.yaml
     ```
 
+6. Run the `synthetic_call_transcription.py` script to generate synthetic call audio files and motes:
+    ```bash
+    python synthetic_call_transcription.py --conversation-topic "Conservative Investing"
+    ```
+
+7. Run the `prepare_vector_db.py` script to prepare the vector database:
+    ```bash
+    python prepare_vector_db.py --notes-file synthetic_data/Conservative Investing/call_notes.txt
+    ```
+
 ## Project Structure
 
 - `synthetic_call_transcription.py`: Synthetic call data generation and transcription

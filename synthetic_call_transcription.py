@@ -5,6 +5,7 @@ import dspy
 import os
 import azure.cognitiveservices.speech as speechsdk
 from pydub import AudioSegment
+import argparse
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -142,6 +143,11 @@ class NoneRelevantNotesGenerator(dspy.Signature):
 
 
 def main():
+    parser = argparse.ArgumentParser(description='Generate synthetic call data')
+    parser.add_argument('--conversation-topic', type=str, required=True,
+                      help='The topic of the conversation')
+    args = parser.parse_args()
+
     # Load config
     with open('config.yaml', 'r') as file:
         config = yaml.safe_load(file)
@@ -155,7 +161,7 @@ def main():
     )
     dspy.configure(lm=lm)
 
-    call_topic = config.get('call_transcription_generation_topic')
+    call_topic = args.conversation_topic
 
     transcription_generator = dspy.ChainOfThought(SyntheticCallTranscription)
     result = transcription_generator(topic=call_topic, temperature=0.9)
