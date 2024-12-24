@@ -50,6 +50,11 @@ An AI-powered assistant that analyzes bank call conversations in real-time using
     python prepare_vector_db.py --notes-file synthetic_data/Conservative Investing/call_notes.txt
     ```
 
+8. Run the app:
+    ```bash
+    streamlit run app.py
+    ```
+
 ## Project Structure
 
 - `synthetic_call_transcription.py`: Synthetic call data generation and transcription
