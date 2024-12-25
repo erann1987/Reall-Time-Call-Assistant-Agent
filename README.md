@@ -40,20 +40,6 @@ An AI-powered assistant that analyzes bank call conversations in real-time using
     cp config.yaml.example config.yaml
     ```
 
-6. Run the `synthetic_call_transcription.py` script to generate synthetic call audio files and motes:
-    ```bash
-    python synthetic_call_transcription.py --conversation-topic "Conservative Investing"
-    ```
-
-7. Run the `prepare_vector_db.py` script to prepare the vector database:
-    ```bash
-    python prepare_vector_db.py --notes-file synthetic_data/Conservative Investing/call_notes.txt
-    ```
-
-8. Run the app:
-    ```bash
-    streamlit run app.py
-    ```
 
 ## Project Structure
 
@@ -69,16 +55,21 @@ An AI-powered assistant that analyzes bank call conversations in real-time using
 
 ## Usage
 
-1. Run the vector database preparation script:
+1. [OPTIONAL] Run the `synthetic_call_transcription.py` script to generate synthetic call audio files and motes:
     ```bash
-    python prepare_vector_db.py
+    python synthetic_call_transcription.py --conversation-topic "Conservative Investing"
     ```
+    Or use the existing call data and notes example files in the `synthetic_data/Conservative Investing` folder.
 
-2. [OPTIONAL] Run the synthetic call generation script to generate synthetic call audio file:
+2. Run the `prepare_vector_db.py` script to prepare the vector database:
     ```bash
-    python synthetic_call_generation.py
+    python prepare_vector_db.py --notes-file <path_to_notes_file>
     ```
-
+    Or use the existing notes example file in the `synthetic_data/Conservative Investing/call_notes.txt` folder:
+    ```bash
+    python prepare_vector_db.py --notes-file synthetic_data/Conservative Investing/call_notes.txt
+    ```
+    
 3. Run the Streamlit app:
     ```bash
     streamlit run app.py
