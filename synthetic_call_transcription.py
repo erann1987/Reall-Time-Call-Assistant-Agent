@@ -56,15 +56,6 @@ class SyntheticCallTranscription(dspy.Signature):
     Customer: You too! Goodbye."""
     topic: str = dspy.InputField(desc="The topic of the call")
     call_transcriptions: list[CallTranscription] = dspy.OutputField(desc="A list of call transcriptions between a client and a bank advisor based on the topic")
-    # non_relevant_notes: list[str] = dspy.OutputField(
-    #     desc="""A list of non-relevant notes to accompany the following call transcription. 
-    #     These notes should:
-    #     1. Be written in present tense, as if actively documenting the advisor's current understanding of the client's situation
-    #     2. Be detailed and include key points discussed during prior calls
-    #     3. Highlight the client's intent during those past interactions
-    #     4. Describe any actions or steps taken by the advisor in response to those earlier calls
-    #     The notes must pertain to previous calls on entirely different topics, ensuring they are unrelated to the current call transcription""",
-    # )
 
 
 def generate_audio_file(call_transcriptions, data_path):

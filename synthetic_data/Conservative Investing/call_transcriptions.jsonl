@@ -1,0 +1,12 @@
+{"speaker":"advisor","utterance":"Good afternoon, thank you for calling ABC Bank. How can I assist you today?","relevant_notes":[]}
+{"speaker":"customer","utterance":"Hi, I'm interested in conservative investments. Can you help?","relevant_notes":["The client expressed interest in conservative investment options with a focus on long-term stability and low risk. Discussed the fixed deposit account as a potential option, highlighting its guaranteed return and minimal risk."]}
+{"speaker":"advisor","utterance":"Of course! Are you looking for short-term or long-term options?","relevant_notes":[]}
+{"speaker":"customer","utterance":"Long-term with lower risk.","relevant_notes":["Informed the client about the current interest rate for a five-year fixed deposit, which is 3.5% per annum. Highlighted the stability and predictability of the return.", "Provided detailed information about the fixed deposit account, including the term options and the fixed interest rate. Emphasized the higher return compared to a regular savings account"]}
+{"speaker":"advisor","utterance":"We have several options, including our fixed deposit account with a guaranteed return and minimal risk.","relevant_notes":[]}
+{"speaker":"customer","utterance":"I'm also interested in stocks.","relevant_notes":["Expressed interest in NVIDIA stock and requested information about its performance and potential for growth"]}
+{"speaker":"advisor","utterance":"Sure, we can discuss some conservative stocks. Are there any particular stocks you are interested in?","relevant_notes":[]}
+{"speaker":"customer","utterance":"Yes, I'm interested in information about apple and microsoft.","relevant_notes":[]}
+{"speaker":"advisor","utterance":"Sure, I can provide you with information about apple and microsoft.","relevant_notes":[]}
+{"speaker":"customer","utterance":"Thank you, I'll consider my options.","relevant_notes":[]}
+{"speaker":"advisor","utterance":"You're welcome. Have a great day!","relevant_notes":[]}
+{"speaker":"customer","utterance":"You too! Goodbye.","relevant_notes":[]}
