@@ -51,7 +51,7 @@ An AI-powered assistant that analyzes bank call conversations in real-time using
 - `config.yaml`: Configuration file for Azure OpenAI models usage
 - `.env`: Configuration file for Azure OpenAI credentials
 - `requirements.txt`: Project dependencies 
-- `synthetic_data/`: Synthetic call data example
+- `synthetic_data/`: Synthetic call data example, including call audio file and notes
 
 ## Usage
 
